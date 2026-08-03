@@ -1,5 +1,10 @@
 # Gestiune & Contabilitate — rescriere (revamp)
 
+[![CI](https://github.com/toniIepure25/Accounting/actions/workflows/ci.yml/badge.svg)](https://github.com/toniIepure25/Accounting/actions/workflows/ci.yml)
+[![Licenta](https://img.shields.io/badge/licenta-proprietara-informational)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-339933)](package.json)
+
 Rescriere de la zero a aplicației KISS (WPF/.NET, doar Windows, bază Access) într-o
 aplicație **cross-platform, offline-first, modulară**, cu UI modern.
 
@@ -35,6 +40,7 @@ aplicație **cross-platform, offline-first, modulară**, cu UI modern.
 | **15. Profesionalizare UX/robustețe** | **`ErrorBoundary`** global (un ecran brandat, nu crash-ul brut React Router); **sistem de toast-uri** (succes/eroare/info) care înlocuiește `alert()`-urile native și mesajele ad-hoc inconsistente din toată aplicația; **dialog de confirmare stilizat** (`useConfirm`) care înlocuiește `confirm()` nativ la orice acțiune distructivă; **stare de încărcare reală** în `DataTable`/`EntityGrid`/`DocumentEditor` (nu mai arată fals „fără înregistrări” înainte ca datele să ajungă); `try/catch` + toast de eroare pe toate salvările; **accesibilitate**: `title`/`aria-label` pe butoanele doar-cu-icoană, `Modal` cu `role="dialog"`, focus mutat în dialog la deschidere și restaurat la închidere, capcană de tastatură (Tab nu iese din dialog) | ✅ implementată |
 | **17. Comercializare (produs vandabil)** | **Model de licentiere comercial**: planuri (Esential/Profesional/Enterprise), **limita de utilizatori** impusa si server-side, licente de **trial**, expirare cu **avertisment + perioada de gratie**, iar dupa expirare **mod doar-citire** (datele raman consultabile si exportabile); **administrare utilizatori** (ecran nou: creare cont, rol, activare/dezactivare, resetare parola, protectie anti-lockout); **schimbarea propriei parole**; **wizard de configurare initiala** la prima pornire; **documente legale** (EULA + informare GDPR) in aplicatie; **code-splitting pe ruta** (bundle initial 515 KB → 372 KB) | ✅ implementată |
 | **16. Runda de securitate** | **XSS** (`escapeHtml` în toate funcțiile de print — factură, deviz, registre, rapoarte) și **CSV/formula injection** (`csvField` în toate exporturile) eliminate; audit de securitate dedicat pe server → **secret de sesiune** nu mai are fallback hardcodat, **rate limiting**/lockout la login, **logout + revocare token**, verificare `utilizator.activ` pe fiecare cerere, **RBAC** extins pe date sensibile (personal/bancă/mijloace fixe/plan de conturi), comparație **constant-time** a semnăturii de sesiune, **CORS** cu origine configurabilă, limită de mărime a corpului cererii; **licențiere: HMAC simetric → semnătură asimetrică ECDSA P-256** (`@gr/license`) — cheia publică din client nu mai poate fi folosită pentru a forja licențe noi | ✅ implementată |
+| **18. Infrastructură de repo profesională** | Legat de repo GitHub public + **CI real** (workflow întărit: least-privilege, concurrency cancel, cache Playwright); fișiere standard de proiect (**LICENSE** proprietar, **SECURITY.md**, **CONTRIBUTING.md**, **CHANGELOG.md**, șabloane issue/PR); **observabilitate server**: logging structurat JSON cu **request-id** per cerere (`x-request-id`) + latență, endpoint `/version`, handler de eroare la `listen`, iar 500 nu mai scurge detalii interne către client (doar id-ul cererii); **teste property-based** (`fast-check`) pentru bani/TVA — invariantul `net + TVA = brut` verificat pe sute de cazuri generate | ✅ implementată |
 
 Acoperă toate elementele din meniul aplicației KISS (Date fixe, Materii prime, Mărfuri,
 Furnizori, Clienți, Casă, Balanțe, Reevaluare, Preparate/Rețete), reorganizate și îmbunătățite,
@@ -156,8 +162,10 @@ tăiere SVG** pe prima placă.
 
 ## Verificat
 
-- `npm test` → **166 teste verzi** (8 pachete: core-domain, data, fiscal-ro, license, auth, ai, sync,
-  **ui**) — bani/TVA, stoc CMP, documente, rapoarte, **partidă dublă** (invariant debit=credit, cost CMP
+- `npm test` → **179 teste verzi** (8 pachete: core-domain, data, fiscal-ro, license, auth, ai, sync,
+  **ui**) — inclusiv **13 teste property-based** (`fast-check`) pe bani/TVA (invariantul `net + TVA = brut`
+  verificat pe sute de cazuri generate, cu shrinking automat al contra-exemplelor); bani/TVA, stoc CMP,
+  documente, rapoarte, **partidă dublă** (invariant debit=credit, cost CMP
   corect la consum, 3-way match NIR↔factură fără dublă contabilizare, **amortizare** 681/281),
   nesting/cant/feronerie (**+ nesting pe lot de comenzi cu trasabilitate pe cod**, `panouriPentruLot`),
   **BOM→consum real de stoc** (`necesarConsumStoc`), **departamente de producție** (ordine fixă,
@@ -641,9 +649,11 @@ Ca să fie clar ce e realmente gata față de ce rămâne — nimic din ce urmea
   livrate centralizat de furnizor).
 - **Export CNC**: lista de croire (CSV) e generică (poziții X/Y, dimensiuni, rotire) — nu într-un
   format specific unei mașini CNC anume (fiecare producător are propriul format de import).
-- **CI/CD real**: `.github/workflows/ci.yml` există și fiecare pas a fost verificat manual, dar
-  fișierul nu a rulat încă pe un runner GitHub Actions real (acest director nu are `.git`/remote);
-  packaging nativ semnat (Authenticode/notarizare Apple) rămâne neînceput.
+- **CI/CD**: proiectul e legat de repo-ul GitHub [toniIepure25/Accounting](https://github.com/toniIepure25/Accounting),
+  iar `.github/workflows/ci.yml` (întărit: least-privilege, concurrency cancel, cache Playwright) rulează
+  acum pe un runner GitHub Actions real la fiecare push/PR — lint, typecheck, teste, build web și e2e.
+  Rămâne neînceput doar **packaging-ul nativ semnat** (Authenticode/notarizare Apple) și canalul de
+  auto-update semnat.
 - **D300/D394/D390 sunt declarații de lucru, nu wire-format ANAF verificat**: agregarea (pe cotă/
   partener/țară) e corectă și testată, dar schema XML exactă a formularului oficial nu a fost
   validată împotriva sistemului declarativ ANAF live. **Intrastat** și **e-Transport (UIT)** rămân
