@@ -1,0 +1,21 @@
+# Imagine pentru modul retea/cloud: serverul API (@gr/server) + PostgreSQL
+# (vezi docker-compose.yml). Contextul de build este radacina monorepo-ului
+# `revamp/`, ca `npm install` sa lege corect pachetele de workspace
+# (@gr/core-domain, @gr/data) in server prin symlink-urile npm.
+FROM node:20-slim
+
+WORKDIR /app
+
+# Doar manifestele intai, pentru cache eficient pe layere Docker.
+COPY package.json pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY server ./server
+COPY db ./db
+
+RUN npm install --no-audit --no-fund
+
+ENV NODE_ENV=production
+ENV PORT=8787
+EXPOSE 8787
+
+CMD ["npm", "run", "start", "-w", "@gr/server"]

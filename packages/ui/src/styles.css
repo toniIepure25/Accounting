@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokeni de design (HSL, fara functia hsl() ca sa mearga cu <alpha-value>). */
+:root {
+  --bg: 210 20% 98%;
+  --surface: 0 0% 100%;
+  --elevated: 0 0% 100%;
+  --border: 214 20% 88%;
+  --muted: 210 16% 93%;
+  --fg: 222 30% 12%;
+  --fg-muted: 215 16% 42%;
+  --primary: 211 100% 45%;
+  --primary-fg: 0 0% 100%;
+  --success: 145 63% 37%;
+  --warning: 38 92% 45%;
+  --danger: 0 72% 48%;
+}
+
+.dark {
+  --bg: 222 30% 8%;
+  --surface: 222 26% 11%;
+  --elevated: 222 24% 14%;
+  --border: 220 18% 22%;
+  --muted: 220 18% 18%;
+  --fg: 210 30% 96%;
+  --fg-muted: 215 18% 65%;
+  --primary: 211 100% 60%;
+  --primary-fg: 222 40% 8%;
+  --success: 145 55% 50%;
+  --warning: 38 92% 58%;
+  --danger: 0 72% 60%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: hsl(var(--bg));
+  color: hsl(var(--fg));
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar discret. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 6px;
+}

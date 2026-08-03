@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instaleaza dependintele
+        run: npm ci
+
+      - name: Lint (biome)
+        run: npm run lint
+
+      - name: Typecheck (toate pachetele)
+        run: npm run typecheck
+
+      - name: Teste unitare + componenta (toate pachetele)
+        run: npm test
+
+      - name: Build web (PWA)
+        run: npm run build:web
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instaleaza dependintele
+        run: npm ci
+
+      - name: Instaleaza Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Teste e2e (login, creare document)
+        run: npm run test:e2e
+
+      - name: Incarca raportul Playwright (la esec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -1,0 +1,29 @@
+{
+  "name": "@gr/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API REST pentru modurile retea (LAN) si cloud. Reutilizeaza pachetele monorepo.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@gr/auth": "*",
+    "@gr/core-domain": "*",
+    "@gr/data": "*",
+    "@gr/license": "*",
+    "undici": "^7.2.0"
+  },
+  "optionalDependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

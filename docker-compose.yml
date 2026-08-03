@@ -1,0 +1,40 @@
+# Modul "retea locala" / "cloud" (vezi planul, Faza 8): PostgreSQL + API server.
+# Pornire: docker compose up -d
+# Serverul citeste DATABASE_URL si ruleaza migratiile din db/migrations automat
+# la boot (idempotent). Fara DATABASE_URL, server/src/db.ts ar porni in modul
+# in-memory — aici il setam explicit pentru Postgres real.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gestiune
+      POSTGRES_USER: gestiune
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-schimba-parola-in-productie}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gestiune -d gestiune"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://gestiune:${POSTGRES_PASSWORD:-schimba-parola-in-productie}@db:5432/gestiune
+      PORT: 8787
+      # ANTHROPIC_API_KEY: setare optionala, pentru asistentul AI online (vezi server/src/ai.ts)
+    ports:
+      - "8787:8787"
+
+volumes:
+  postgres_data:

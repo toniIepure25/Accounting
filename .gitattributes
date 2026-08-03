@@ -1,0 +1,13 @@
+# Normalize line endings to LF in the repository (checked-in files),
+# while letting Git convert to the platform default on checkout.
+* text=auto eol=lf
+
+# Binary / generated assets must never be line-ending-normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# rust / tauri
+target/
+apps/*/src-tauri/gen/
+apps/*/src-tauri/target/
+
+# local data & env
+*.sqlite
+*.sqlite-*
+*.db
+.env
+.env.local
+
+# chei de licenta ale furnizorului — NICIODATA in control de versiuni
+# (vezi packages/license/scripts/genereaza-chei.mjs)
+packages/license/.chei-furnizor/
+
+# editor / os
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# playwright (e2e)
+.playwright-browsers/
+.tmp-playwright/
+playwright-report/
+test-results/
