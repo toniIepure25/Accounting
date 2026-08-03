@@ -6,8 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+# Anuleaza rularile in curs pentru acelasi branch/PR cand apare un push nou —
+# nu are rost sa terminam o rulare pe cod deja inlocuit.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Privilegiu minim: CI-ul doar citeste codul, nu are nevoie de scriere.
+permissions:
+  contents: read
+
 jobs:
   lint-typecheck-test-build:
+    name: Lint · Typecheck · Teste · Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +44,7 @@ jobs:
         run: npm run build:web
 
   e2e:
+    name: E2E (Playwright)
     runs-on: ubuntu-latest
     needs: lint-typecheck-test-build
     steps:
@@ -46,10 +58,30 @@ jobs:
       - name: Instaleaza dependintele
         run: npm ci
 
-      - name: Instaleaza Chromium (Playwright)
-        run: npx playwright install --with-deps chromium
+      # Versiunea de Playwright determina versiunea de browser — cheia de cache
+      # o include, ca sa reinstalam browserele doar cand se schimba versiunea.
+      - name: Versiune Playwright
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
-      - name: Teste e2e (login, creare document)
+      - name: Cache browsere Playwright
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Instaleaza Chromium + dependinte de sistem (Playwright)
+        run: npx playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+
+      # La cache-hit, browserul e prezent dar dependintele de sistem (apt) nu —
+      # le instalam separat, fara sa redescarcam browserul.
+      - name: Instaleaza doar dependintele de sistem (la cache-hit)
+        run: npx playwright install-deps chromium
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+
+      - name: Teste e2e (login, configurare initiala, creare document)
         run: npm run test:e2e
 
       - name: Incarca raportul Playwright (la esec)

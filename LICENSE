@@ -1,0 +1,51 @@
+Licenta proprietara — Toate drepturile rezervate
+Proprietary License — All Rights Reserved
+
+Copyright (c) 2026 Iepure Antoniu
+
+--------------------------------------------------------------------------------
+ROMANA
+--------------------------------------------------------------------------------
+
+Acest software si codul sursa asociat ("Software-ul") sunt un produs comercial.
+Titularul drepturilor de autor isi rezerva toate drepturile.
+
+Utilizarea Software-ului este permisa DOAR pe baza unei licente valide acordate
+in scris de titular (vezi mecanismul de licentiere din pachetul @gr/license si
+documentul EULA din aplicatie). In lipsa unei astfel de licente:
+
+  - NU este permisa utilizarea in productie a Software-ului;
+  - NU este permisa copierea, distribuirea, sublicentierea, inchirierea sau
+    revanzarea Software-ului sau a unor parti din el;
+  - NU este permisa crearea de lucrari derivate in scop comercial;
+  - NU este permisa eliminarea sau modificarea acestei notite de licenta.
+
+Este permisa consultarea codului in scop de evaluare si audit. Orice alta
+utilizare necesita acordul scris al titularului.
+
+Software-ul este furnizat "ca atare", fara nicio garantie de orice fel.
+Titularul nu raspunde pentru daune rezultate din utilizarea Software-ului, in
+limitele permise de lege.
+
+--------------------------------------------------------------------------------
+ENGLISH
+--------------------------------------------------------------------------------
+
+This software and its associated source code (the "Software") are a commercial
+product. The copyright holder reserves all rights.
+
+Use of the Software is permitted ONLY under a valid license granted in writing
+by the copyright holder (see the @gr/license package and the in-app EULA).
+Without such a license you may NOT use the Software in production; copy,
+distribute, sublicense, rent, or resell the Software or any part of it; create
+derivative works for commercial purposes; or remove or alter this license
+notice.
+
+You may read the source code for evaluation and audit purposes. Any other use
+requires the copyright holder's written consent.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. TO THE EXTENT
+PERMITTED BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY DAMAGES
+ARISING FROM THE USE OF THE SOFTWARE.
+
+Contact: iepuretoni533@gmail.com
