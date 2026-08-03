@@ -9,6 +9,7 @@ import {
   demoSeed,
   migrate,
 } from '@gr/data';
+import { log } from './log.js';
 import { createPgExecutor } from './pg-executor.js';
 
 const AICI = dirname(fileURLToPath(import.meta.url));
@@ -47,8 +48,8 @@ export async function creeazaServerDb(): Promise<ServerDb> {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
-    console.warn(
-      '[db] DATABASE_URL nesetat — pornesc cu provider in-memory (date demo, NEPERSISTENTE). ' +
+    log.warn(
+      'DATABASE_URL nesetat — pornesc cu provider in-memory (date demo, NEPERSISTENTE). ' +
         'Pentru PostgreSQL real, seteaza DATABASE_URL (vezi docker-compose.yml).',
     );
     return {
@@ -64,11 +65,8 @@ export async function creeazaServerDb(): Promise<ServerDb> {
 
   const migratii = incarcaMigratii();
   const aplicate = await migrate(exec, migratii);
-  console.log(
-    aplicate.length > 0
-      ? `[db] Migratii PostgreSQL aplicate: ${aplicate.join(', ')}`
-      : '[db] PostgreSQL conectat, fara migratii noi de aplicat.',
-  );
+  if (aplicate.length > 0) log.info('migratii PostgreSQL aplicate', { migratii: aplicate });
+  else log.info('PostgreSQL conectat, fara migratii noi de aplicat');
 
   return {
     provider: createSqlProvider(exec),

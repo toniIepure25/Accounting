@@ -6,6 +6,7 @@ import {
   utilizatoriMaxPermisi,
   verificaLicenta,
 } from '@gr/license';
+import { log } from './log.js';
 
 /**
  * Licenta impusa SERVER-SIDE. Pana acum, licenta traia doar in clientul web
@@ -31,7 +32,7 @@ function cheiePublica(): JsonWebKey {
   try {
     return JSON.parse(brut) as JsonWebKey;
   } catch {
-    console.warn('[licenta] LICENSE_PUBLIC_KEY nu e un JWK JSON valid — folosesc cheia demo.');
+    log.warn('LICENSE_PUBLIC_KEY nu e un JWK JSON valid — folosesc cheia demo');
     return CHEIE_PUBLICA_DEMO;
   }
 }
@@ -43,8 +44,8 @@ export async function incarcaLicenta(): Promise<LicentaPayload | null> {
 
   const cheie = process.env.LICENSE_KEY?.trim();
   if (!cheie) {
-    console.warn(
-      '[licenta] LICENSE_KEY nesetat — serverul nu impune nicio limita de utilizatori. ' +
+    log.warn(
+      'LICENSE_KEY nesetat — serverul nu impune nicio limita de utilizatori. ' +
         'Seteaza cheia de licenta intr-un deployment comercial.',
     );
     return null;
@@ -59,19 +60,19 @@ export async function incarcaLicenta(): Promise<LicentaPayload | null> {
     // aplicata in client (perioada de gratie) — serverul nu inchide brusc
     // accesul la datele contabile ale clientului.
     payload = r.payload;
-    console.warn(`[licenta] Licenta pentru "${r.payload.client}" a EXPIRAT (${r.payload.expira}).`);
+    log.warn('licenta expirata', { client: r.payload.client, expira: r.payload.expira });
   } else {
-    console.error(
-      `[licenta] LICENSE_KEY invalida (${r.motiv}) — ignorata, serverul ramane fara limita.`,
-    );
+    log.error('LICENSE_KEY invalida — ignorata, serverul ramane fara limita', { motiv: r.motiv });
     return null;
   }
 
   const max = utilizatoriMaxPermisi(payload);
-  console.log(
-    `[licenta] Client: ${payload.client} · editie: ${payload.editie} · ` +
-      `plan: ${payload.plan ?? 'fara'} · utilizatori: ${max === null ? 'nelimitat' : max}`,
-  );
+  log.info('licenta incarcata', {
+    client: payload.client,
+    editie: payload.editie,
+    plan: payload.plan ?? 'fara',
+    utilizatoriMax: max ?? 'nelimitat',
+  });
   return payload;
 }
 

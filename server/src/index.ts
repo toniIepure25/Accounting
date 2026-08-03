@@ -12,6 +12,11 @@ import {
 } from './auth.js';
 import { creeazaServerDb } from './db.js';
 import { incarcaLicenta, maiIncapeUtilizatorActiv } from './licenta.js';
+import { idCerere, log } from './log.js';
+
+/** Versiunea si commit-ul, raportate de /version. Commit-ul vine din CI (env). */
+const VERSIUNE = process.env.npm_package_version ?? '0.0.0';
+const COMMIT = process.env.GIT_COMMIT ?? process.env.GITHUB_SHA ?? 'necunoscut';
 
 /**
  * API REST pentru modurile retea (LAN) si cloud. Expune repository-urile
@@ -143,6 +148,10 @@ async function main() {
   }
 
   const server = createServer(async (req, res) => {
+    // Un id per cerere, corelabil intre logul de acces si eventualele erori;
+    // intors si clientului in `x-request-id` ca sa poata fi cautat in loguri.
+    const idReq = idCerere();
+    const start = performance.now();
     const send = (status: number, body?: unknown) => {
       const cerut = req.headers.origin;
       const acao = !CORS_ORIGINS
@@ -159,14 +168,27 @@ async function main() {
         // nivel de CORS inainte sa ajunga la server (preflight OPTIONS trece,
         // dar cererea reala e blocata local in browser).
         'access-control-allow-headers': 'content-type, authorization',
+        'access-control-expose-headers': 'x-request-id',
+        'x-request-id': idReq,
       });
       res.end(body === undefined ? '' : JSON.stringify(body));
+      // Log de acces structurat, o linie per cerere. `health`/`ready` sunt
+      // zgomotoase (probe de orchestrare la fiecare cateva secunde) — le lasam
+      // pe `debug`, restul pe `info`, iar erorile 5xx pe `warn`.
+      const durataMs = Math.round(performance.now() - start);
+      const cale = (req.url ?? '/').split('?')[0];
+      const nivel =
+        status >= 500 ? 'warn' : cale === '/health' || cale === '/ready' ? 'debug' : 'info';
+      log[nivel]('cerere', { idReq, metoda: req.method, cale, status, durataMs });
     };
     try {
       if (req.method === 'OPTIONS') return send(204);
       const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
       const [, resource, id, actiune] = url.pathname.split('/');
 
+      // Versiune + commit — util pentru a sti exact ce ruleaza in productie.
+      if (resource === 'version')
+        return send(200, { versiune: VERSIUNE, commit: COMMIT, persistent });
       // Liveness: procesul ruleaza. Readiness: baza de date raspunde (relevant
       // in mod PostgreSQL — util pentru orchestrare / load balancer).
       if (resource === 'health') return send(200, { ok: true, persistent });
@@ -455,18 +477,46 @@ async function main() {
         send(413, { error: 'corpul cererii este prea mare' });
         return;
       }
-      send(500, { error: String(err) });
+      // Detaliul erorii (care poate contine mesaje interne de la baza de date
+      // sau stack trace) se logheaza server-side, NU se trimite clientului —
+      // altfel ar fi o scurgere de informatii. Clientul primeste doar id-ul
+      // cererii, cu care o problema raportata poate fi corelata in loguri.
+      log.error('eroare neasteptata', {
+        idReq,
+        cale: (req.url ?? '/').split('?')[0],
+        eroare: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      send(500, { error: 'eroare interna', idReq });
     }
   });
 
+  // `listen` raporteaza esecul printr-un eveniment 'error' asincron, NU printr-o
+  // exceptie — deci `main().catch` de mai jos nu l-ar prinde. Fara un handler
+  // explicit, o eroare de pornire (ex. portul deja ocupat) ar aparea ca un
+  // crash brut 'Unhandled error event', nu ca un mesaj clar in loguri.
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      log.error('portul este deja ocupat — alt proces asculta pe el?', { port: PORT });
+    } else {
+      log.error('eroare de server', { eroare: err.message });
+    }
+    process.exit(1);
+  });
+
   server.listen(PORT, () => {
-    console.log(
-      `API pe http://localhost:${PORT} (${persistent ? 'PostgreSQL' : 'in-memory / demo'})`,
-    );
+    log.info('server pornit', {
+      port: PORT,
+      stocare: persistent ? 'postgresql' : 'in-memory (demo)',
+      versiune: VERSIUNE,
+    });
   });
 }
 
 main().catch((err) => {
-  console.error('Eroare fatala la pornirea serverului:', err);
+  log.error('eroare fatala la pornire', {
+    eroare: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
   process.exit(1);
 });

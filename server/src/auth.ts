@@ -10,6 +10,7 @@ import {
 } from '@gr/auth';
 import { celMaiRecentBlocaj, documentBlocat } from '@gr/core-domain';
 import type { DataProvider } from '@gr/data';
+import { log } from './log.js';
 
 /**
  * Autentificare + autorizare reale pe server. Inainte de asta, RBAC-ul din
@@ -33,8 +34,8 @@ export const SESSION_SECRET = (() => {
   // dar secretul nu mai e ghicibil — costul e ca toate sesiunile sunt
   // invalidate la un restart (utilizatorii trebuie sa se re-autentifice),
   // acceptabil fata de un secret cunoscut public.
-  console.warn(
-    '[auth] SESSION_SECRET nesetat — folosesc un secret aleator generat la pornire ' +
+  log.warn(
+    'SESSION_SECRET nesetat — folosesc un secret aleator generat la pornire ' +
       '(sesiunile nu supravietuiesc unui restart). Seteaza SESSION_SECRET explicit ' +
       'intr-un deployment real (LAN/cloud) pentru sesiuni stabile.',
   );
