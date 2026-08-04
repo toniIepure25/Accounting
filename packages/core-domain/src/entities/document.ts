@@ -35,7 +35,13 @@ export const DocumentLinieSchema = z.object({
   unitateMasura: z.string().default('buc'),
   cantitate: z.number().default(1),
   pretUnitarBani: z.number().int().default(0),
-  cotaTvaProcent: z.number().int().min(0).max(100).default(19),
+  /**
+   * Cota TVA a liniei = SNAPSHOT-ul cotei rezolvate (procent). NU mai are un
+   * default tacit de 19% — trebuie setata explicit de cel care creeaza linia,
+   * din cota rezolvata (categorie produs + data document). Snapshot-ul complet
+   * al regulii (tax_rule_id/versiune) se persista la POSTARE, in Faza 3.
+   */
+  cotaTvaProcent: z.number().int().min(0).max(100),
   pretIncludeTva: z.boolean().default(false),
   netBani: z.number().int().default(0),
   tvaBani: z.number().int().default(0),

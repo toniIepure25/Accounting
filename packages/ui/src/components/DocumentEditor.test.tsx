@@ -72,7 +72,10 @@ describe('DocumentEditor', () => {
 
     const partenerCell = await screen.findByText('Restaurant Boema SRL');
     const row = partenerCell.closest('tr') as HTMLElement;
-    expect(within(row).getByText('595,00')).toBeInTheDocument();
+    // DULAP (500,00 RON, categorie 'standard') cu cota REZOLVATA la data
+    // documentului (azi): 21% de la 01.08.2025 => 500 x 1,21 = 605,00.
+    // Inainte de motorul temporal, era hardcodat 19% (595,00) — bug corectat.
+    expect(within(row).getByText('605,00')).toBeInTheDocument();
     expect(within(row).getByText('ciorna')).toBeInTheDocument();
     expect(within(row).getByText(/^PRO-\d{4}-\d{6}$/)).toBeInTheDocument();
   });

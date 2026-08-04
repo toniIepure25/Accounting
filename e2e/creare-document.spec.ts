@@ -18,6 +18,8 @@ test('creaza o proforma noua (ciorna) cu o linie de produs', async ({ page }) =>
 
   const row = page.locator('tr', { hasText: 'Restaurant Boema SRL' });
   await expect(row).toBeVisible();
-  await expect(row.getByText('595,00')).toBeVisible();
+  // DULAP (500,00 RON, 'standard') cu cota rezolvata la data documentului: 21%
+  // de la 01.08.2025 => 605,00 (inainte era 19% hardcodat = 595,00).
+  await expect(row.getByText('605,00')).toBeVisible();
   await expect(row.getByText('ciorna')).toBeVisible();
 });

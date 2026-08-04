@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { COTE_TVA_RO } from '../tva.js';
 
 /** Tipul articolului din nomenclator. */
 export const TipProdus = z.enum([
@@ -17,7 +16,19 @@ export const ProdusSchema = z.object({
   denumire: z.string().min(1).max(200),
   tip: TipProdus.default('marfa'),
   unitateMasura: z.string().min(1).max(12).default('buc'),
-  cotaTvaProcent: z.number().int().min(0).max(100).default(COTE_TVA_RO.STANDARD),
+  /**
+   * Categoria fiscala STABILA a produsului (ex. 'standard', 'redus_9', 'scutit').
+   * Sursa AUTORITARA a cotei: cota efectiva se rezolva din categorie + data
+   * documentului prin motorul temporal (vezi `procentImplicitProdus`). Implicit
+   * 'standard' — o categorie, NU o cota hardcodata; rezolva 21% azi, 19% istoric.
+   */
+  codCategorieFiscala: z.string().min(1).max(40).default('standard'),
+  /**
+   * @deprecated Indiciu LEGACY de cota (pastrat pentru audit/migrare). NU mai e
+   * sursa autoritara pentru documente noi — nu mai are un default tacit de 19%.
+   * Cota autoritara vine din `codCategorieFiscala` + data, prin motorul temporal.
+   */
+  cotaTvaProcent: z.number().int().min(0).max(100).nullable().default(null),
   grupaId: z.string().uuid().nullable().default(null),
   /** Pret de vanzare implicit, in bani (fara TVA). */
   pretVanzareBani: z.number().int().min(0).default(0),

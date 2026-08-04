@@ -2,11 +2,14 @@ import {
   type DocumentTip,
   type Partener,
   type Produs,
+  REGULI_TVA_RO,
   baniToRon,
   calculLinie,
   celMaiRecentBlocaj,
   documentBlocat,
   formateazaCodDocument,
+  procentImplicitProdus,
+  procentTvaLaData,
   ronToBani,
 } from '@gr/core-domain';
 import type { Document } from '@gr/core-domain';
@@ -206,21 +209,48 @@ export function DocumentEditor(cfg: DocConfig) {
         um: 'buc',
         cantitate: 1,
         pretRon: 0,
-        cota: 19,
+        // Linie manuala noua: cota standard rezolvata la data documentului
+        // (21% azi, 19% istoric) — NU un 19% hardcodat.
+        cota: cotaStandardImplicita(),
       },
     ]);
   const removeLine = (key: string) => setLinii((ls) => ls.filter((l) => l.key !== key));
   const updateLine = (key: string, patch: Partial<LineDraft>) =>
     setLinii((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
+  // Data de rezolvare a TVA: data documentului, sau azi daca inca nu e setata.
+  const dataRezolvareTva = () =>
+    dataDoc && dataDoc.length >= 10 ? dataDoc : new Date().toISOString().slice(0, 10);
+  // Cota standard rezolvata la data documentului (21% azi, 19% istoric) — NU un
+  // 19% hardcodat. Fallback la 0 doar daca rezolvarea esueaza (nu ar trebui).
+  const cotaStandardImplicita = () => {
+    try {
+      return procentTvaLaData(REGULI_TVA_RO, {
+        data: dataRezolvareTva(),
+        codCategorieFiscala: 'standard',
+      });
+    } catch {
+      return 0;
+    }
+  };
+
   const onPickProdus = (key: string, produsId: string) => {
     const p = produse.find((x) => x.id === produsId);
     if (!p) return updateLine(key, { produsId: null });
+    // Cota AUTORITARA: rezolvata din categoria fiscala a produsului + data
+    // documentului (motorul temporal). Pentru un produs necategorizat / fara
+    // regula, cadem pe indiciul legacy al produsului, apoi pe cota standard.
+    let cota: number;
+    try {
+      cota = procentImplicitProdus(p, dataRezolvareTva());
+    } catch {
+      cota = p.cotaTvaProcent ?? cotaStandardImplicita();
+    }
     updateLine(key, {
       produsId: p.id,
       denumire: p.denumire,
       um: p.unitateMasura,
-      cota: p.cotaTvaProcent,
+      cota,
       pretRon: baniToRon(p.pretVanzareBani),
     });
   };

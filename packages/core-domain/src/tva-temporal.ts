@@ -128,6 +128,21 @@ export function procentTvaLaData(reguli: readonly RegulaTva[], ctx: ContextRezol
 }
 
 /**
+ * Cota implicita a unui produs la o data data, rezolvata AUTORITAR din categoria
+ * fiscala + data (NU din indiciul legacy `cotaTvaProcent`). Inlocuieste vechiul
+ * default tacit de 19% de pe produs. Arunca `RegulaTvaInexistenta` daca produsul
+ * nu are o categorie cu regula aplicabila (ex. 'necategorizat') — fara cota
+ * inventata tacit.
+ */
+export function procentImplicitProdus(
+  produs: { codCategorieFiscala: string },
+  data: string,
+  reguli: readonly RegulaTva[] = REGULI_TVA_RO,
+): number {
+  return procentTvaLaData(reguli, { data, codCategorieFiscala: produs.codCategorieFiscala });
+}
+
+/**
  * Seed verificat al regulilor de TVA din Romania.
  *
  * Sursa cotelor din 2025: Legea 141/2025 (publicata 25.07.2025), in vigoare de

@@ -8,7 +8,8 @@ export const PreparatSchema = z.object({
   grupaId: z.string().uuid().nullable().default(null),
   unitateMasura: z.string().default('portie'),
   pretVanzareBani: z.number().int().min(0).default(0),
-  cotaTvaProcent: z.number().int().min(0).max(100).default(9),
+  /** Cota TVA — setata explicit; fara default tacit (fost 9%). Vezi motorul temporal de TVA. */
+  cotaTvaProcent: z.number().int().min(0).max(100),
   activ: z.boolean().default(true),
 });
 export type Preparat = z.infer<typeof PreparatSchema>;
