@@ -8,6 +8,7 @@ export * from './api-numerotare.js';
 export * from './audit-wrapper.js';
 export * from './firma-scope.js';
 export * from './licenta-guard.js';
+export * from './tax-rule-repo.js';
 export * from './backup.js';
 export * from './provider.js';
 export * from './demo-seed.js';

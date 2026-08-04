@@ -40,10 +40,57 @@ export async function migrate(
   return run;
 }
 
-/** Imparte un fisier SQL in instructiuni individuale (naiv, dar suficient pentru DDL-ul nostru). */
+/**
+ * Imparte un fisier SQL in instructiuni individuale, corect fata de:
+ *  - comentarii de linie `-- ...` (oriunde, nu doar la inceput de statement);
+ *  - siruri intre ghilimele simple, inclusiv `''` escapat;
+ *  - `;` care apar in interiorul unui sir.
+ *
+ * Varianta anterioara (split naiv pe `;` + filtrarea chunk-urilor care incep cu
+ * `--`) ARUNCA prima instructiune a oricarui fisier care incepe cu un comentariu
+ * (ex. 0001_init.sql) — bug latent nedetectat fiindca migratiile nu au fost
+ * rulate niciodata pe o baza SQLite/PostgreSQL reala (demo-ul in-memory nu
+ * foloseste SQL). Acum comentariile sunt indepartate, nu folosite ca delimitator.
+ */
 function splitStatements(sql: string): string[] {
-  return sql
-    .split(';')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith('--'));
+  const statements: string[] = [];
+  let current = '';
+  let inString = false;
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i]!;
+    const next = sql[i + 1];
+    if (inString) {
+      current += ch;
+      if (ch === "'") {
+        if (next === "'") {
+          current += next; // ghilimea escapata '' — face parte din sir
+          i++;
+        } else {
+          inString = false;
+        }
+      }
+      continue;
+    }
+    if (ch === "'") {
+      inString = true;
+      current += ch;
+      continue;
+    }
+    if (ch === '-' && next === '-') {
+      // Comentariu de linie: sari pana la sfarsitul liniei.
+      while (i < sql.length && sql[i] !== '\n') i++;
+      current += '\n';
+      continue;
+    }
+    if (ch === ';') {
+      const t = current.trim();
+      if (t.length > 0) statements.push(t);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  const t = current.trim();
+  if (t.length > 0) statements.push(t);
+  return statements;
 }
