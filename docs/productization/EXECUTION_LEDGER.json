@@ -1,0 +1,70 @@
+{
+  "$schema": "internal://productization-execution-ledger",
+  "program": "Accounting ERP productization",
+  "generatedAt": "2026-08-04",
+  "baselineSha": "0fd74168e8d5502f7c9bd29f980c6d8738ab417a",
+  "branch": "main",
+  "conventions": {
+    "requirementId": "P<phase>-R<n>",
+    "status": ["todo", "in_progress", "done", "blocked"]
+  },
+  "baselineEvidence": {
+    "typecheck": "10/10 packages OK",
+    "tests": { "total": 179, "byPackage": { "core-domain": 81, "data": 22, "license": 22, "ui": 19, "fiscal-ro": 11, "auth": 10, "sync": 9, "ai": 5 } },
+    "lint": "clean (1 pre-existing noExplicitAny warning)",
+    "buildWeb": "ok",
+    "e2e": "4 Playwright tests green",
+    "unverified": ["postgresql-integration", "tauri-native-build", "anaf-spv-live", "official-saft-validator", "official-efactura-validator"]
+  },
+  "requirements": [
+    {
+      "id": "P0-R1", "phase": 0, "title": "Baseline audit with evidence",
+      "status": "done", "files": ["docs/productization/BASELINE_AUDIT.md"],
+      "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": "Audit run against live repo; commands executed and recorded.",
+      "risks": [], "externalValidation": "n/a"
+    },
+    {
+      "id": "P0-R2", "phase": 0, "title": "Master plan with stable requirement IDs",
+      "status": "done", "files": ["docs/productization/MASTER_PRODUCTIZATION_PLAN.md"],
+      "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": "20-phase plan with P<phase>-R<n> IDs.",
+      "risks": [], "externalValidation": "n/a"
+    },
+    {
+      "id": "P0-R3", "phase": 0, "title": "Machine-readable execution ledger",
+      "status": "done", "files": ["docs/productization/EXECUTION_LEDGER.json"],
+      "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": "This file.", "risks": [], "externalValidation": "n/a"
+    },
+    {
+      "id": "P0-R4", "phase": 0, "title": "ADRs (command layer, immutable ledgers, doc lifecycle, tax versioning)",
+      "status": "done", "files": ["docs/productization/adr/"],
+      "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": "ADR-0001..0004 written.", "risks": [], "externalValidation": "n/a"
+    },
+    {
+      "id": "P0-R5", "phase": 0, "title": "Risk register + release-readiness checklist",
+      "status": "done", "files": ["docs/productization/RISK_REGISTER.md", "docs/productization/RELEASE_READINESS.md"],
+      "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": "Both files written.", "risks": [], "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R1", "phase": 1, "title": "Verify current RO VAT rates (2025 change) against authoritative sources",
+      "status": "todo", "files": [], "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": null, "risks": ["Getting current rate/date wrong corrupts all seed data"],
+      "externalValidation": "requires authoritative source check (web/official)"
+    },
+    {
+      "id": "P1-R2", "phase": 1, "title": "Effective-dated TaxRule model + resolver in core-domain",
+      "status": "todo", "files": [], "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": null, "risks": [], "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R5", "phase": 1, "title": "Persist resolved rule/version on posted line",
+      "status": "blocked", "files": [], "migrations": [], "tests": [], "commitSha": null,
+      "acceptanceEvidence": null, "risks": ["depends on P3 document aggregate + posting"],
+      "externalValidation": "n/a", "blockedBy": ["P3-R2"]
+    }
+  ]
+}
