@@ -94,6 +94,7 @@ const D394Page = pagina(fiscal, 'D394Page');
 const DecontTvaPage = pagina(fiscal, 'DecontTvaPage');
 const EFacturaPage = pagina(fiscal, 'EFacturaPage');
 const SaftPage = pagina(fiscal, 'SaftPage');
+const TvaReguliPage = pagina(() => import('../pages/TvaReguli.js'), 'TvaReguliPage');
 
 const MijloaceFixePage = pagina(() => import('../pages/mijloace-fixe.js'), 'MijloaceFixePage');
 
@@ -458,6 +459,7 @@ export const modules: AppModule[] = [
     moduleId: 'fiscal',
     permisiune: 'fiscal.trimitere',
     items: [
+      { label: 'Reguli TVA', path: '/fiscal/reguli-tva', icon: Landmark, component: TvaReguliPage },
       { label: 'e-Factura', path: '/fiscal/efactura', icon: FileDigit, component: EFacturaPage },
       {
         label: 'Decont TVA (D300)',
