@@ -10,61 +10,191 @@
   },
   "baselineEvidence": {
     "typecheck": "10/10 packages OK",
-    "tests": { "total": 179, "byPackage": { "core-domain": 81, "data": 22, "license": 22, "ui": 19, "fiscal-ro": 11, "auth": 10, "sync": 9, "ai": 5 } },
+    "tests": {
+      "total": 179,
+      "byPackage": {
+        "core-domain": 81,
+        "data": 22,
+        "license": 22,
+        "ui": 19,
+        "fiscal-ro": 11,
+        "auth": 10,
+        "sync": 9,
+        "ai": 5
+      }
+    },
     "lint": "clean (1 pre-existing noExplicitAny warning)",
     "buildWeb": "ok",
     "e2e": "4 Playwright tests green",
-    "unverified": ["postgresql-integration", "tauri-native-build", "anaf-spv-live", "official-saft-validator", "official-efactura-validator"]
+    "unverified": [
+      "postgresql-integration",
+      "tauri-native-build",
+      "anaf-spv-live",
+      "official-saft-validator",
+      "official-efactura-validator"
+    ]
   },
   "requirements": [
     {
-      "id": "P0-R1", "phase": 0, "title": "Baseline audit with evidence",
-      "status": "done", "files": ["docs/productization/BASELINE_AUDIT.md"],
-      "migrations": [], "tests": [], "commitSha": null,
+      "id": "P0-R1",
+      "phase": 0,
+      "title": "Baseline audit with evidence",
+      "status": "done",
+      "files": ["docs/productization/BASELINE_AUDIT.md"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
       "acceptanceEvidence": "Audit run against live repo; commands executed and recorded.",
-      "risks": [], "externalValidation": "n/a"
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
-      "id": "P0-R2", "phase": 0, "title": "Master plan with stable requirement IDs",
-      "status": "done", "files": ["docs/productization/MASTER_PRODUCTIZATION_PLAN.md"],
-      "migrations": [], "tests": [], "commitSha": null,
+      "id": "P0-R2",
+      "phase": 0,
+      "title": "Master plan with stable requirement IDs",
+      "status": "done",
+      "files": ["docs/productization/MASTER_PRODUCTIZATION_PLAN.md"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
       "acceptanceEvidence": "20-phase plan with P<phase>-R<n> IDs.",
-      "risks": [], "externalValidation": "n/a"
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
-      "id": "P0-R3", "phase": 0, "title": "Machine-readable execution ledger",
-      "status": "done", "files": ["docs/productization/EXECUTION_LEDGER.json"],
-      "migrations": [], "tests": [], "commitSha": null,
-      "acceptanceEvidence": "This file.", "risks": [], "externalValidation": "n/a"
+      "id": "P0-R3",
+      "phase": 0,
+      "title": "Machine-readable execution ledger",
+      "status": "done",
+      "files": ["docs/productization/EXECUTION_LEDGER.json"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
+      "acceptanceEvidence": "This file.",
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
-      "id": "P0-R4", "phase": 0, "title": "ADRs (command layer, immutable ledgers, doc lifecycle, tax versioning)",
-      "status": "done", "files": ["docs/productization/adr/"],
-      "migrations": [], "tests": [], "commitSha": null,
-      "acceptanceEvidence": "ADR-0001..0004 written.", "risks": [], "externalValidation": "n/a"
+      "id": "P0-R4",
+      "phase": 0,
+      "title": "ADRs (command layer, immutable ledgers, doc lifecycle, tax versioning)",
+      "status": "done",
+      "files": ["docs/productization/adr/"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
+      "acceptanceEvidence": "ADR-0001..0004 written.",
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
-      "id": "P0-R5", "phase": 0, "title": "Risk register + release-readiness checklist",
-      "status": "done", "files": ["docs/productization/RISK_REGISTER.md", "docs/productization/RELEASE_READINESS.md"],
-      "migrations": [], "tests": [], "commitSha": null,
-      "acceptanceEvidence": "Both files written.", "risks": [], "externalValidation": "n/a"
+      "id": "P0-R5",
+      "phase": 0,
+      "title": "Risk register + release-readiness checklist",
+      "status": "done",
+      "files": ["docs/productization/RISK_REGISTER.md", "docs/productization/RELEASE_READINESS.md"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
+      "acceptanceEvidence": "Both files written.",
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
-      "id": "P1-R1", "phase": 1, "title": "Verify current RO VAT rates (2025 change) against authoritative sources",
-      "status": "todo", "files": [], "migrations": [], "tests": [], "commitSha": null,
-      "acceptanceEvidence": null, "risks": ["Getting current rate/date wrong corrupts all seed data"],
-      "externalValidation": "requires authoritative source check (web/official)"
+      "id": "P1-R1",
+      "phase": 1,
+      "title": "Verify current RO VAT rates (2025 change) against authoritative sources",
+      "status": "done",
+      "files": ["docs/productization/adr/0004-effective-dated-tax-rules.md"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
+      "acceptanceEvidence": "Law 141/2025 (published 2025-07-25), effective 2025-08-01: standard 19%->21%, reduced 5%&9% consolidated to 11%, exempt 0% unchanged. Verified via avalara.com, vatupdate.com, globalvatcompliance.com.",
+      "risks": [],
+      "externalValidation": "authoritative web sources checked; official Monitorul Oficial text not fetched in-env"
     },
     {
-      "id": "P1-R2", "phase": 1, "title": "Effective-dated TaxRule model + resolver in core-domain",
-      "status": "todo", "files": [], "migrations": [], "tests": [], "commitSha": null,
-      "acceptanceEvidence": null, "risks": [], "externalValidation": "n/a"
+      "id": "P1-R2",
+      "phase": 1,
+      "title": "Effective-dated TaxRule model + resolver in core-domain",
+      "status": "done",
+      "files": ["packages/core-domain/src/tva-temporal.ts"],
+      "migrations": [],
+      "tests": ["packages/core-domain/src/tva-temporal.test.ts"],
+      "commitSha": null,
+      "acceptanceEvidence": "RegulaTva model (validFrom/validTo, category, fiscal category, jurisdiction, legal ref), rezolvaRegulaTva resolver.",
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
-      "id": "P1-R5", "phase": 1, "title": "Persist resolved rule/version on posted line",
-      "status": "blocked", "files": [], "migrations": [], "tests": [], "commitSha": null,
-      "acceptanceEvidence": null, "risks": ["depends on P3 document aggregate + posting"],
-      "externalValidation": "n/a", "blockedBy": ["P3-R2"]
+      "id": "P1-R3",
+      "phase": 1,
+      "title": "Resolver with explicit error when no rule applies (no silent default)",
+      "status": "done",
+      "files": ["packages/core-domain/src/tva-temporal.ts"],
+      "migrations": [],
+      "tests": ["packages/core-domain/src/tva-temporal.test.ts"],
+      "commitSha": null,
+      "acceptanceEvidence": "RegulaTvaInexistenta thrown when no rule matches; tested.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R4",
+      "phase": 1,
+      "title": "Seed current + historical RO rules incl. 2025 transition",
+      "status": "done",
+      "files": ["packages/core-domain/src/tva-temporal.ts"],
+      "migrations": [],
+      "tests": ["packages/core-domain/src/tva-temporal.test.ts"],
+      "commitSha": null,
+      "acceptanceEvidence": "REGULI_TVA_RO seed: standard 19->21, redus_9/redus_5 -> 11, scutit 0, boundary 2025-08-01 (exclusive validTo).",
+      "risks": [
+        "fine-grained product->fiscal-category mapping (secondary legislation) not yet modeled"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R7",
+      "phase": 1,
+      "title": "Tests: boundaries, historical determinism, transition fixtures, property invariants",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": ["packages/core-domain/src/tva-temporal.test.ts"],
+      "commitSha": null,
+      "acceptanceEvidence": "13 tests green: July/Aug 2025 boundary fixtures, historical determinism (property), explicit-error, calculLinie integration (19% vs 21%).",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R2b",
+      "phase": 1,
+      "title": "Persist tax rules in DB (temporal table) + admin UI + wire runtime to read them",
+      "status": "todo",
+      "files": [],
+      "migrations": ["(pending) 0011_tax_rules.sql"],
+      "tests": [],
+      "commitSha": null,
+      "acceptanceEvidence": null,
+      "risks": [
+        "cote_tva table remains unused; UI still uses hardcoded COTE_TVA_RO for product default"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R5",
+      "phase": 1,
+      "title": "Persist resolved rule/version on posted line",
+      "status": "blocked",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "commitSha": null,
+      "acceptanceEvidence": null,
+      "risks": ["depends on P3 document aggregate + posting"],
+      "externalValidation": "n/a",
+      "blockedBy": ["P3-R2"]
     }
   ]
 }

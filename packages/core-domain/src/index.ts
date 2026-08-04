@@ -1,5 +1,6 @@
 export * from './money.js';
 export * from './tva.js';
+export * from './tva-temporal.js';
 export * from './document-numbering.js';
 export * from './stock.js';
 export * from './documents.js';
