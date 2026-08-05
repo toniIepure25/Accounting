@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
+import { esteImutabil } from '@gr/core-domain';
 import { type Repository, randuriVizibilePentruFirma } from '@gr/data';
 import { chatAI } from './ai.js';
 import {
@@ -424,6 +425,17 @@ async function main() {
             }
           }
         }
+        // Imutabilitatea documentului (Faza 3, ADR-0003): un document POSTAT
+        // (validat) / stornat / anulat nu mai poate fi modificat prin CRUD
+        // generic — de la niciun rol. Corectarea se face prin stornare, nu prin
+        // editare in loc. Aceasta e aplicarea server-side a agregatului.
+        if (numeResursa === 'documente' && curent && esteImutabil(curent.stare)) {
+          return send(409, {
+            error:
+              'documentul este postat/stornat/anulat (imutabil) — nu poate fi modificat; ' +
+              'foloseste stornarea pentru corectii',
+          });
+        }
         // Inchidere de perioada: se aplica NECONDITIONAT (inclusiv admin), doar
         // pe `documente` — verifica atat data curenta cat si data noua din
         // patch (daca se schimba), ca sa nu poata fi ocolita schimband data.
@@ -453,6 +465,13 @@ async function main() {
         const curent = numeResursa === 'documente' || scopatPeFirma ? await repo.getById(id) : null;
         if (scopatPeFirma && !apartineFirmei(curent, sesiune.firmaId)) {
           return send(404, { error: 'inexistent' });
+        }
+        if (numeResursa === 'documente' && curent && esteImutabil(curent.stare)) {
+          return send(409, {
+            error:
+              'documentul este postat/stornat/anulat (imutabil) — nu poate fi sters; ' +
+              'foloseste stornarea pentru corectii',
+          });
         }
         if (
           numeResursa === 'documente' &&
