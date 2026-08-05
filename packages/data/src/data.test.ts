@@ -59,6 +59,10 @@ describe('migrate runner', () => {
         }
         return [] as T[];
       },
+      // Migrate runner nu foloseste tranzactii — stub minimal (ruleaza work direct).
+      async transaction(_options, work) {
+        return work(exec);
+      },
     };
 
     const migrations = [

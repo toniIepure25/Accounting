@@ -182,6 +182,25 @@ export function createSqlProvider(exec: SqlExecutor): DataProvider {
 }
 
 /**
+ * Leaga TOATE repository-urile de un executor de tranzactie (P2-R5). Toate
+ * repo-urile provider-ului rezultat trec prin `tx`, deci scrierile lor fac parte
+ * din aceeasi tranzactie — nu exista cadere silentioasa pe executorul radacina.
+ * Se foloseste in interiorul unui `exec.transaction(...)`:
+ *
+ *   await exec.transaction({}, async (tx) => {
+ *     const repos = withExecutor(tx);
+ *     await repos.documente.create(...);
+ *     await repos.documenteLinii.create(...);
+ *   });
+ *
+ * Faza 2 stabileste doar fundatia sigura; comenzile autoritare (Faza 3) o vor
+ * folosi ca sa scrie document + linii + stoc + jurnal + audit atomic.
+ */
+export function withExecutor(tx: SqlExecutor): DataProvider {
+  return createSqlProvider(tx);
+}
+
+/**
  * Provider peste API REST (client subtire pentru modurile retea / cloud).
  * `getToken` e citit la FIECARE cerere (nu capturat o data), ca token-ul de
  * sesiune curent (din AuthContext) sa ajunga mereu proaspat pe fiecare fetch —

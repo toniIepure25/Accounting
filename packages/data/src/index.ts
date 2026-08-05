@@ -1,4 +1,5 @@
 export * from './sql-executor.js';
+export * from './tx-errors.js';
 export * from './repository.js';
 export * from './migrate.js';
 export * from './generic-sql-repo.js';

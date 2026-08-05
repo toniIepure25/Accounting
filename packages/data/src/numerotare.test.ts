@@ -73,6 +73,9 @@ describe('numerotare — SQL (UPDATE...RETURNING simulat)', () => {
         const r = stare.get(`${tip}::${an}`);
         return (r ? [r] : []) as T[];
       },
+      async transaction(_options, work) {
+        return work(exec);
+      },
     };
 
     const n = createSqlNumerotare(exec);
