@@ -33,3 +33,14 @@ submissions, audit, or licensing-sensitive operations.
 - Enables atomicity, immutability, idempotency, and consistent authorization.
 - Requires a transaction abstraction (ADR-0002 / Phase 2) first.
 - UI data-access is refactored from multi-repo writes to command calls (Phase 3).
+
+## Status update (Phase 3, 2026-08-05)
+`packages/application` exists with authoritative handlers: `postDocument`
+(document + lines + immutable tax snapshot, atomic in one `exec.transaction` via
+`withExecutor(tx)`; VAT resolved server-side; legal number allocated at posting),
+`createDraft`, `updateDraft`, `approve`, `cancel`, `reverse`. Posted-document
+immutability is enforced server-side (generic REST PATCH/DELETE rejected) and via
+the command guard. Idempotency, optimistic locking, and DB-unique numbering are
+Phase 4; stock/accounting/audit/outbox effects attach as their ledgers persist
+(Phases 5–7). Remaining: routing the UI/API transport through commands per
+deployment mode (memory/api/sqlite).

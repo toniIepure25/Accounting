@@ -6,9 +6,9 @@ Severity: **S1** launch-blocking correctness/legal/security · **S2** major ·
 | ID | Risk | Sev | Evidence / trigger | Mitigation (phase) | Status |
 |---|---|---|---|---|---|
 | RK-01 | Hardcoded 19% VAT wrong after 2025 RO rate change | S1→S3 | was `tva.ts` const/`produs.ts` default 19 | **Downgraded**: temporal engine + persisted rules + runtime wiring done; silent default removed (guard test). Remaining: external review of per-good category mapping | downgraded |
-| RK-02 | Posting not atomic (no DB transaction) | S1→S2 | was no `transaction()` | **Downgraded**: transaction abstraction implemented + real-SQLite contract/fault-injection tests. Not closed until Phase 3 authoritative commands use it | downgraded |
+| RK-02 | Posting not atomic (no DB transaction) | S1→closed | was no `transaction()` | **Closed** (document posting): `postDocument` (Phase 3) writes document+lines+tax snapshot atomically in one `exec.transaction`; fault-injection tests prove no partial write. Stock/accounting ledger effects await Phase 5/6 persistence | closed |
 | RK-03 | Stock/accounting derived, not persisted → not immutable/auditable | S1 | no ledger tables | Immutable ledgers (P5, P6) | open |
-| RK-04 | Posted documents editable/deletable via generic CRUD | S1 | generic repo contract | Lifecycle + commands (P3) | open |
+| RK-04 | Posted documents editable/deletable via generic CRUD | S1→S3 | generic repo contract | **Downgraded**: aggregate immutability (esteImutabil) + server rejects generic PATCH/DELETE on posted/reversed/cancelled docs (409, all roles) + command guard. Remaining: route local desktop UI (direct SQLite, no server) through the guard | downgraded |
 | RK-05 | Duplicate numbers/postings under concurrency | S1 | no unique constraint at posting, no idempotency | Locking + idempotency + DB constraint (P4) | open |
 | RK-06 | Concurrent overselling (negative stock) | S1 | in-memory CMP, no locking | `BEGIN IMMEDIATE` now available (P2); ledger + policy still needed (P5) | partially mitigated |
 | RK-18 | Migration runner dropped statements after leading comments (never run on real DB) | S1→closed | 0001's first CREATE TABLE dropped by naive splitter | **Closed**: quote-aware splitter + real-SQLite migration test (P2 work) | closed |

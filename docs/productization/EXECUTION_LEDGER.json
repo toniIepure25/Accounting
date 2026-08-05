@@ -11,19 +11,20 @@
   "baselineEvidence": {
     "typecheck": "10/10 packages OK",
     "tests": {
-      "total": 236,
+      "total": 261,
       "skipped": 1,
-      "note": "post Phase 1+2; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1+2+3; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 99,
+        "core-domain": 111,
         "data": 52,
+        "application": 13,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 11,
         "auth": 10,
         "sync": 9,
-        "ai": 5,
-        "server": 6
+        "server": 6,
+        "ai": 5
       }
     },
     "lint": "clean (1 pre-existing noExplicitAny warning)",
@@ -226,15 +227,17 @@
       "id": "P1-R5b",
       "phase": 1,
       "title": "Immutable posted-line tax snapshot (tax_rule_id/version) persisted",
-      "status": "blocked",
-      "files": [],
-      "migrations": ["0012 added nullable snapshot columns (forward-compatible)"],
-      "tests": [],
-      "commitSha": null,
-      "acceptanceEvidence": null,
-      "risks": ["authoritative posting is Phase 3"],
-      "externalValidation": "n/a",
-      "blockedBy": ["P3-R2"]
+      "status": "done",
+      "files": [
+        "packages/application/src/tax-snapshot.ts",
+        "packages/application/src/post-document.ts"
+      ],
+      "migrations": ["0012 snapshot columns now populated at posting"],
+      "tests": ["packages/application/src/post-document.test.ts"],
+      "commitSha": "7c7923d",
+      "acceptanceEvidence": "postDocument resolves each line's rate from persisted tax_rules by category+date and freezes tax_rule_id/version/resolved_tax_rate_bp/category/legal_reference/JSON on the line; verified on real SQLite (21% authoritative vs client 19%, historical 19%, snapshot copied on reversal).",
+      "risks": [],
+      "externalValidation": "n/a"
     },
     {
       "id": "P2-R1",
@@ -321,6 +324,74 @@
       "acceptanceEvidence": "All acceptance criteria met on real SQLite; PostgreSQL implemented + CI-configured but not verified against a real server in this environment.",
       "risks": ["do not close RK-02 until Phase 3 authoritative commands use transactions"],
       "externalValidation": "CI postgres job execution"
+    },
+    {
+      "id": "P3-R2",
+      "phase": 3,
+      "title": "Document aggregate + lifecycle state machine (pure)",
+      "status": "done",
+      "files": [
+        "packages/core-domain/src/document-aggregate.ts",
+        "packages/core-domain/src/entities/document.ts"
+      ],
+      "migrations": [],
+      "tests": ["packages/core-domain/src/document-aggregate.test.ts"],
+      "commitSha": "c4626c7",
+      "acceptanceEvidence": "ciorna->aprobat->validat(posted)->stornat|anulat transition table; posted/reversed/cancelled immutable; server-side total recompute; invariant validation. 12 pure unit tests.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P3-R1",
+      "phase": 3,
+      "title": "Application command layer (@gr/application) — transactional PostDocument + lifecycle",
+      "status": "done",
+      "files": [
+        "packages/application/src/post-document.ts",
+        "packages/application/src/lifecycle.ts",
+        "packages/application/src/tax-snapshot.ts",
+        "packages/application/src/guards.ts"
+      ],
+      "migrations": ["0013_produse_cota_nullable.sql"],
+      "tests": ["packages/application/src/post-document.test.ts"],
+      "commitSha": "7c7923d",
+      "acceptanceEvidence": "postDocument writes document+lines+immutable tax snapshot atomically in ONE exec.transaction (BEGIN IMMEDIATE) via withExecutor(tx); resolves authoritative VAT server-side; allocates legal number at posting; fault injection leaves no partial write and burns no number; createDraft/updateDraft/approve/cancel/reverse. 13 real-SQLite tests.",
+      "risks": [
+        "end-to-end UI/transport wiring per deployment mode is remaining integration (command layer + server guard in place)"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P3-R3",
+      "phase": 3,
+      "title": "Server-side invariant validation + posted-document immutability enforcement",
+      "status": "done",
+      "files": ["packages/core-domain/src/document-aggregate.ts", "server/src/index.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/document-aggregate.test.ts",
+        "packages/application/src/post-document.test.ts"
+      ],
+      "commitSha": "936a641",
+      "acceptanceEvidence": "totals recomputed server-side (never trust client); generic REST PATCH/DELETE on a posted/reversed/cancelled document rejected (409) for every role; command-layer guard asertaDocumentEditabilPersistat.",
+      "risks": ["local desktop UI (direct SQLite, no server) not yet routed through the guard"],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P3-STATUS",
+      "phase": 3,
+      "title": "Phase 3 overall",
+      "status": "done",
+      "files": [
+        "docs/productization/adr/0001-application-command-layer.md",
+        "docs/productization/adr/0003-document-lifecycle.md"
+      ],
+      "migrations": [],
+      "tests": [],
+      "commitSha": "936a641",
+      "acceptanceEvidence": "Authoritative transactional command layer + document aggregate implemented and tested on real SQLite; posting is a business event; posted docs immutable. RK-02 closed (document posting is atomic and uses the Phase 2 transaction), RK-04 downgraded (server-enforced immutability).",
+      "risks": ["stock/accounting ledger effects of posting await Phase 5/6 persistence"],
+      "externalValidation": "n/a"
     }
   ]
 }

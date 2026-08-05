@@ -1,81 +1,92 @@
 # Next-agent handoff
 
 Continuation state. Read this + the ledger before touching code. Do not restart
-planning or repeat Phase 0.
+planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `f889119` (worktree clean after doc commit)
+- HEAD SHA: `936a641` (worktree clean before the doc commit; the doc commit is the tip)
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
 
 ## Completed
 - **Phase 0** (done): baseline + governance artifacts.
-- **Phase 1 — effective-dated RO VAT** (**complete** at the safely-supported level):
-  temporal engine (`tva-temporal.ts`), persisted `tax_rules` (migrations 0011/0012)
-  with real-SQLite tests, `TaxRuleRepository` + DB-vs-domain equivalence, product
-  `codCategorieFiscala` + backfill, silent 19% default removed (guard test),
-  DocumentEditor resolves via engine, read-only admin registry. Primary-official
-  evidence recorded (Law 141/2025, ANAF text read directly). `P1-R5b` (immutable
-  posted-line tax snapshot) is intentionally **blocked by Phase 3** — nullable
-  snapshot columns already added to `documente_linii` (forward-compatible).
-- **Phase 2 — transactions** (**IMPLEMENTED_NOT_POSTGRES_VERIFIED**):
-  `SqlExecutor.transaction`, error taxonomy (`tx-errors.ts`), real-SQLite impl
-  (`better-sqlite.ts`, tested), Tauri impl (mirrored), PostgreSQL impl
-  (`pg-executor.ts`, dedicated client + bounded retry + whitelisted isolation),
-  `withExecutor(tx)` repo binding, 12 SQLite contract tests + 7 binding/fault +
-  6 PG fake-pool + 1 gated real-PG (skipped locally), ADR-0005, CI postgres job.
+- **Phase 1 — effective-dated RO VAT** (done): temporal engine, persisted
+  `tax_rules`, product `codCategorieFiscala`, silent-default removal + guard,
+  read-only admin registry. **P1-R5b now done** — the immutable posted-line tax
+  snapshot is populated at posting (see Phase 3).
+- **Phase 2 — transactions** (IMPLEMENTED_NOT_POSTGRES_VERIFIED): `SqlExecutor.transaction`,
+  error taxonomy, real-SQLite impl, Tauri impl, PostgreSQL impl + CI job, `withExecutor`.
+- **Phase 3 — commands & aggregate** (done):
+  - `packages/core-domain/src/document-aggregate.ts` — pure lifecycle
+    (ciorna→aprobat→validat(posted)→stornat|anulat), transition table,
+    immutability rules, server-side total recompute, invariant validation (12 tests).
+  - `packages/application` (`@gr/application`) — authoritative command handlers:
+    `postDocument` (document+lines+**immutable tax snapshot** atomic in one
+    `exec.transaction`, BEGIN IMMEDIATE, via `withExecutor(tx)`; VAT resolved from
+    persisted rules; legal number allocated at posting), `createDraftDocument`,
+    `updateDraftDocument` (immutability-guarded), `approveDocument`,
+    `cancelDocument`, `reverseDocument` (posted→reversed + linked negated storno,
+    snapshot copied), `asertaDocumentEditabilPersistat` guard. 13 real-SQLite tests
+    incl. fault-injection (no partial write, no number burned).
+  - Migration `0013_produse_cota_nullable.sql` removed the last unsafe VAT DB
+    default (`produse.cota_tva_procent NOT NULL DEFAULT 19`).
+  - Server enforces posted-document immutability on generic REST PATCH/DELETE (409).
+  - `@gr/data` now exposes `./node-sqlite` (better-sqlite adapter) for Node consumers.
 
 ## Current test/build state (evidence, this session)
-- `npm run typecheck` → 10/10.
-- `npx turbo run test --force` → **236 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 99, data 52, license 22, ui 22, fiscal-ro 11,
-  auth 10, sync 9, ai 5, server 6.
+- `npx turbo run typecheck --force` → 11/11.
+- `npx turbo run test --force` → **261 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 111, data 52, application 13, ui 22, license 22,
+  fiscal-ro 11, auth 10, sync 9, server 6, ai 5.
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
 - `npm run build:web` → OK (~372 kB).
-- **Not run in-env:** real PostgreSQL (needs the CI service), Tauri native build,
-  e2e was updated (595→605) but not re-run this session — re-run before relying on it.
+- **Not run in-env:** real PostgreSQL (CI service), Tauri native build, Playwright e2e.
 
-## Next priority: Phase 3 — authoritative application commands + transactional document aggregate
-Start from the PROVEN transaction foundation:
-1. Create `packages/application` with real command handlers (not empty interfaces,
-   not CRUD wrappers). First target: `PostDocument` writing document + lines +
-   (later) stock + journal + audit inside ONE `exec.transaction(...)` via
-   `withExecutor(tx)`. Reuse the fault-injection harness pattern from
-   `transaction-integration.test.ts` for partial-write safety.
-2. Persist the immutable tax snapshot on posted lines (`P1-R5b`): fill
-   `tax_rule_id`/`tax_rule_version`/`resolved_tax_rate_bp`/`tax_category`/
-   `tax_legal_reference`/`tax_resolution_snapshot` (columns already exist) using
-   `rezolvaTvaPersistat`.
-3. Document lifecycle (ADR-0003): draft→approved→posted→reversed|cancelled;
-   block PATCH/DELETE on posted docs; corrections via reversal/credit note.
-4. Optimistic locking + idempotency + DB-unique numbering (Phase 4) follow.
+## What is intentionally NOT done yet (be honest about this)
+- **UI/transport wiring per deployment mode.** The command layer + server guard
+  exist and are tested, but the React UI still saves via the generic provider in
+  some paths, and the web-demo memory provider has no transaction/executor. Wiring
+  `postDocument` end-to-end (SQLite/desktop, API/server, and a memory fallback for
+  the demo) is the remaining Phase 3 integration.
+- Posting does not yet emit persisted **stock/accounting** effects — those ledgers
+  don't exist until Phase 5/6. `reverseDocument` flips state + emits the mirror
+  document; ledger reversal attaches when the ledgers persist.
 
-Do NOT: create superficial empty `packages/application`; call a state patch
-"posting"; claim atomic business posting from the transaction helper alone;
-mark posted docs immutable before all modification paths are blocked.
+## Next priority: Phase 4 — optimistic locking, numbering, idempotency
+1. **Optimistic locking**: `version` + `expectedVersion` on document
+   update/post; conflict response (409) instead of last-write-wins.
+2. **Idempotency store**: key + request hash + stored response, so a retried
+   `postDocument` never posts twice / never allocates a second number.
+3. **DB unique constraint** on `(firma, tip, an, serie, numar)`; allocate the
+   number at the authoritative step (already done in `postDocument`) and let the
+   constraint be the backstop under concurrency.
+- Acceptance: zero duplicate numbers/postings under concurrent retries. Reuse the
+  fault-injection harness; add a concurrency test (two `postDocument` on the same
+  draft — one wins, one gets a conflict).
 
 ## Forbidden regressions
-- Keep `RegulaTvaInexistenta` (no silent VAT default); keep the guard test green.
-- Do not reintroduce `.default(19)` on entity VAT fields.
-- Do not weaken the transaction contract (rollback preserves original error;
-  bound executor throws after completion; PG always releases; retry only on
-  40001/40P01).
-- Keep money in minor units; keep migrations passing on real SQLite.
-- Do not close RK-02 until Phase 3 commands actually use transactions.
+- Keep `RegulaTvaInexistenta` / the no-unsafe-VAT-default guard green.
+- Keep posting atomic; keep posted docs immutable (aggregate + server guard).
+- Keep the transaction contract intact (rollback preserves original error; bound
+  executor throws after completion; PG always releases; retry only on 40001/40P01).
+- Do not weaken the Phase 3 tests to pass new work.
 
 ## Environment gotchas
-- Windows: kill stray servers with `Get-NetTCPConnection -LocalPort <p> | Stop-Process`, not `pkill`.
+- Windows: kill stray servers with `Get-NetTCPConnection -LocalPort <p> | Stop-Process`.
 - Turbo caches tests; use `npx turbo run test --force` for counts.
-- `better-sqlite3` is the Node test SQLite (dev-dep in `@gr/data`), NOT exported
-  from the package index (keeps the native module out of the web bundle).
+- `better-sqlite3` is the Node test SQLite; import the adapter via
+  `@gr/data/node-sqlite` (keeps the native module out of the web bundle).
+- FK enforcement is ON in the better-sqlite test env — seed referenced rows
+  (partener/gestiune/produs) before inserting documents.
 
 ## Continuation prompt (paste to resume)
-> Resume the Accounting productization program. HEAD `f889119`. Phase 0/1 done,
-> Phase 2 IMPLEMENTED_NOT_POSTGRES_VERIFIED. Begin Phase 3: create
-> `packages/application` with a real transactional `PostDocument` command
-> (document + lines + tax snapshot, atomic via `withExecutor(tx)`), persist the
-> posted-line tax snapshot (P1-R5b), and enforce the document lifecycle
-> (posted = immutable). Use the fault-injection harness for partial-write tests.
-> Update the ledger + handoff. No claim without evidence.
+> Resume the Accounting productization program. HEAD `936a641`. Phases 0–3 done
+> (Phase 2 IMPLEMENTED_NOT_POSTGRES_VERIFIED; Phase 3 command layer + aggregate +
+> server immutability done, UI/transport wiring remaining). Begin Phase 4:
+> optimistic locking (version/expectedVersion + 409 conflict), an idempotency
+> store for `postDocument`, and a DB unique constraint on
+> (firma, tip, an, serie, numar). Add a concurrency test proving no duplicate
+> number/posting under retries, reusing the fault-injection harness. Update the
+> ledger + handoff. No claim without evidence.

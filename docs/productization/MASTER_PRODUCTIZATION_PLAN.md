@@ -20,7 +20,7 @@ specs where applicable. No claim without evidence.
 | 0 | Baseline, governance, safety net | yes | done |
 | 1 | Temporal (effective-dated) tax engine + current RO VAT | yes | done (P1-R5b posted-line snapshot blocked by P3) |
 | 2 | Transaction-capable persistence | yes | IMPLEMENTED_NOT_POSTGRES_VERIFIED |
-| 3 | Application commands + document aggregate | yes | todo |
+| 3 | Application commands + document aggregate | yes | done (UI/transport wiring per mode remaining) |
 | 4 | Optimistic locking, numbering, idempotency | yes | todo |
 | 5 | Persistent immutable stock ledger | yes | todo |
 | 6 | Persistent immutable accounting ledger | yes | todo |
@@ -64,11 +64,18 @@ specs where applicable. No claim without evidence.
 - **P2-R3** Fault-injection support; nested-tx semantics defined; timeout strategy.
 - Acceptance: induced failure after any step leaves no partial mutation; same contract suite passes on SQLite + PG.
 
-### P3 — Commands & aggregate
-- **P3-R1** `packages/application` with command handlers (Create/Update/Approve/Post/Reverse/Cancel/CreditNote/ClosePeriod/RecordPayment/…).
-- **P3-R2** Document aggregate + lifecycle (draft→approved→posted→reversed|cancelled); posted immutable.
-- **P3-R3** Server-side validation of all invariants; totals recomputed server-side.
-- Acceptance: UI sends commands; doc+lines atomic; posting is a business event.
+### P3 — Commands & aggregate — **done**
+- **P3-R1** `packages/application` with command handlers — **done**: `postDocument`
+  (transactional, tax snapshot, number allocation), `createDraft`, `updateDraft`,
+  `approve`, `cancel`, `reverse`. CreditNote/ClosePeriod/RecordPayment deferred to
+  their owning phases (7/10/…).
+- **P3-R2** Document aggregate + lifecycle (ciorna→aprobat→validat→stornat|anulat);
+  posted immutable — **done** (pure, 12 tests).
+- **P3-R3** Server-side invariant validation + totals recomputed server-side +
+  posted-document immutability enforced on generic REST — **done**.
+- Acceptance: posting is an atomic business event (one transaction); posted docs
+  immutable server-side. Remaining integration: routing the UI/API transport
+  through the command layer per deployment mode (memory/api/sqlite).
 
 ### P4 — Concurrency & idempotency
 - **P4-R1** Optimistic locking (`version`, `expectedVersion`, conflict response).
