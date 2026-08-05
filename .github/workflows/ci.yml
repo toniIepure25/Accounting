@@ -43,6 +43,39 @@ jobs:
       - name: Build web (PWA)
         run: npm run build:web
 
+  postgres:
+    name: Integrare PostgreSQL (tranzactii + migratii)
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test-build
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: gr
+          POSTGRES_PASSWORD: gr
+          POSTGRES_DB: gr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U gr"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # Testul de integrare PG (server/src/pg-transaction.integration.test.ts) si
+      # migratiile pe Postgres ruleaza DOAR cand DATABASE_URL e setat.
+      DATABASE_URL: postgres://gr:gr@localhost:5432/gr_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Instaleaza dependintele
+        run: npm ci
+      - name: Teste server (inclusiv integrarea PostgreSQL reala)
+        run: npm test --workspace=@gr/server
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
