@@ -22,7 +22,20 @@ export const DocumentTip = z.enum([
 ]);
 export type DocumentTip = z.infer<typeof DocumentTip>;
 
-export const DocumentStare = z.enum(['ciorna', 'validat', 'anulat']);
+/**
+ * Starile din ciclul de viata al unui document (vezi ADR-0003 si
+ * document-aggregate.ts pentru masina de stari + regulile de imutabilitate):
+ *   ciorna  = draft (editabil liber)
+ *   aprobat = approved (validat, in asteptarea postarii; inca corectabil)
+ *   validat = POSTAT (posted) — emite efecte (stoc/contabil/fiscal); IMUTABIL.
+ *             Numele legacy `validat` e pastrat intentionat: intreaga aplicatie
+ *             (contabilitate.ts, reports.ts, stoc, sync) trateaza deja `validat`
+ *             drept starea postata. A-l redenumi ar fi o schimbare cu raza mare
+ *             fara castig — semantica de "posted" e clara prin agregat.
+ *   stornat = reversed (corectat printr-un document de stornare legat)
+ *   anulat  = cancelled
+ */
+export const DocumentStare = z.enum(['ciorna', 'aprobat', 'validat', 'stornat', 'anulat']);
 export type DocumentStare = z.infer<typeof DocumentStare>;
 
 export const DocumentLinieSchema = z.object({

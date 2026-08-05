@@ -56,7 +56,13 @@ interface LineDraft {
   cota: number;
 }
 
-const stariTone = { ciorna: 'warning', validat: 'success', anulat: 'danger' } as const;
+const stariTone = {
+  ciorna: 'warning',
+  aprobat: 'muted',
+  validat: 'success',
+  stornat: 'muted',
+  anulat: 'danger',
+} as const;
 
 export function DocumentEditor(cfg: DocConfig) {
   const db = useData();

@@ -4,6 +4,7 @@ export * from './tva-temporal.js';
 export * from './document-numbering.js';
 export * from './stock.js';
 export * from './documents.js';
+export * from './document-aggregate.js';
 export * from './reports.js';
 export * from './contabilitate.js';
 export * from './nesting.js';
