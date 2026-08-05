@@ -5,7 +5,7 @@ planning or repeat Phase 0.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `b9fd2ae` (worktree clean after doc commit)
+- HEAD SHA: `f889119` (worktree clean after doc commit)
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -72,7 +72,7 @@ mark posted docs immutable before all modification paths are blocked.
   from the package index (keeps the native module out of the web bundle).
 
 ## Continuation prompt (paste to resume)
-> Resume the Accounting productization program. HEAD `b9fd2ae`. Phase 0/1 done,
+> Resume the Accounting productization program. HEAD `f889119`. Phase 0/1 done,
 > Phase 2 IMPLEMENTED_NOT_POSTGRES_VERIFIED. Begin Phase 3: create
 > `packages/application` with a real transactional `PostDocument` command
 > (document + lines + tax snapshot, atomic via `withExecutor(tx)`), persist the
