@@ -17,9 +17,9 @@ specs where applicable. No claim without evidence.
 
 | Phase | Theme | Launch-blocking | Status |
 |---|---|---|---|
-| 0 | Baseline, governance, safety net | yes | in_progress |
-| 1 | Temporal (effective-dated) tax engine + current RO VAT | yes | in_progress |
-| 2 | Transaction-capable persistence | yes | todo |
+| 0 | Baseline, governance, safety net | yes | done |
+| 1 | Temporal (effective-dated) tax engine + current RO VAT | yes | done (P1-R5b posted-line snapshot blocked by P3) |
+| 2 | Transaction-capable persistence | yes | IMPLEMENTED_NOT_POSTGRES_VERIFIED |
 | 3 | Application commands + document aggregate | yes | todo |
 | 4 | Optimistic locking, numbering, idempotency | yes | todo |
 | 5 | Persistent immutable stock ledger | yes | todo |

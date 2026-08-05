@@ -11,23 +11,26 @@
   "baselineEvidence": {
     "typecheck": "10/10 packages OK",
     "tests": {
-      "total": 179,
+      "total": 236,
+      "skipped": 1,
+      "note": "post Phase 1+2; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 81,
-        "data": 22,
+        "core-domain": 99,
+        "data": 52,
         "license": 22,
-        "ui": 19,
+        "ui": 22,
         "fiscal-ro": 11,
         "auth": 10,
         "sync": 9,
-        "ai": 5
+        "ai": 5,
+        "server": 6
       }
     },
     "lint": "clean (1 pre-existing noExplicitAny warning)",
-    "buildWeb": "ok",
-    "e2e": "4 Playwright tests green",
+    "buildWeb": "ok (index ~372 kB)",
+    "e2e": "4 Playwright tests green (updated 595->605 for correct 21% resolution)",
     "unverified": [
-      "postgresql-integration",
+      "postgresql-integration (real; gated on DATABASE_URL, runs in CI postgres job)",
       "tauri-native-build",
       "anaf-spv-live",
       "official-saft-validator",
@@ -170,31 +173,154 @@
     {
       "id": "P1-R2b",
       "phase": 1,
-      "title": "Persist tax rules in DB (temporal table) + admin UI + wire runtime to read them",
-      "status": "todo",
-      "files": [],
-      "migrations": ["(pending) 0011_tax_rules.sql"],
-      "tests": [],
-      "commitSha": null,
-      "acceptanceEvidence": null,
-      "risks": [
-        "cote_tva table remains unused; UI still uses hardcoded COTE_TVA_RO for product default"
+      "title": "Persist tax rules in DB (temporal table) + admin UI + wire runtime off hardcoded default",
+      "status": "done",
+      "files": [
+        "db/migrations/0011_tax_rules.sql",
+        "db/migrations/0012_product_fiscal_category.sql",
+        "packages/data/src/tax-rule-repo.ts",
+        "packages/ui/src/pages/TvaReguli.tsx",
+        "packages/ui/src/components/DocumentEditor.tsx"
       ],
+      "migrations": ["0011_tax_rules.sql", "0012_product_fiscal_category.sql"],
+      "tests": ["migrate-sqlite.test.ts", "tax-rule-repo.test.ts", "TvaReguli.test.tsx"],
+      "commitSha": "634fbbe/dc4e103/b278f98",
+      "acceptanceEvidence": "tax_rules table + seed on real SQLite; product cod_categorie_fiscala + backfill; DocumentEditor resolves via engine; read-only admin registry.",
+      "risks": [
+        "cote_tva legacy table still present (superseded by tax_rules); per-good category mapping needs external review"
+      ],
+      "externalValidation": "per-good fiscal category classification"
+    },
+    {
+      "id": "P1-A6",
+      "phase": 1,
+      "title": "Remove unsafe hardcoded VAT defaults + static guard",
+      "status": "done",
+      "files": [
+        "packages/core-domain/src/entities/produs.ts",
+        "packages/core-domain/src/entities/document.ts",
+        "packages/core-domain/src/entities/preparat.ts",
+        "packages/core-domain/src/no-unsafe-vat-default.guard.test.ts"
+      ],
+      "migrations": [],
+      "tests": ["no-unsafe-vat-default.guard.test.ts"],
+      "commitSha": "dc4e103",
+      "acceptanceEvidence": "silent 19/9 defaults removed from entity schemas; guard test blocks reintroduction.",
+      "risks": [],
       "externalValidation": "n/a"
     },
     {
-      "id": "P1-R5",
+      "id": "P1-R5a",
       "phase": 1,
-      "title": "Persist resolved rule/version on posted line",
+      "title": "Draft/runtime integration of resolved VAT",
+      "status": "done",
+      "files": ["packages/ui/src/components/DocumentEditor.tsx"],
+      "migrations": [],
+      "tests": ["DocumentEditor.test.tsx"],
+      "commitSha": "dc4e103",
+      "acceptanceEvidence": "draft lines resolve rate from product category + document date.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P1-R5b",
+      "phase": 1,
+      "title": "Immutable posted-line tax snapshot (tax_rule_id/version) persisted",
       "status": "blocked",
       "files": [],
-      "migrations": [],
+      "migrations": ["0012 added nullable snapshot columns (forward-compatible)"],
       "tests": [],
       "commitSha": null,
       "acceptanceEvidence": null,
-      "risks": ["depends on P3 document aggregate + posting"],
+      "risks": ["authoritative posting is Phase 3"],
       "externalValidation": "n/a",
       "blockedBy": ["P3-R2"]
+    },
+    {
+      "id": "P2-R1",
+      "phase": 2,
+      "title": "SqlExecutor.transaction contract + error taxonomy",
+      "status": "done",
+      "files": ["packages/data/src/sql-executor.ts", "packages/data/src/tx-errors.ts"],
+      "migrations": [],
+      "tests": ["transaction-contract.test.ts"],
+      "commitSha": "16536c2",
+      "acceptanceEvidence": "transaction(options, work); stable error categories.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P2-R2",
+      "phase": 2,
+      "title": "SQLite implementation (real) + PostgreSQL implementation",
+      "status": "done",
+      "files": [
+        "packages/data/src/adapters/better-sqlite.ts",
+        "packages/data/src/adapters/tauri-sqlite.ts",
+        "server/src/pg-executor.ts"
+      ],
+      "migrations": [],
+      "tests": ["transaction-contract.test.ts", "pg-executor.test.ts"],
+      "commitSha": "16536c2/81d4b78",
+      "acceptanceEvidence": "SQLite BEGIN/SAVEPOINT/COMMIT/ROLLBACK verified on real SQLite; PG dedicated client + retry verified via fake pool + gated real-PG test.",
+      "risks": ["PostgreSQL not run against a real server in-env"],
+      "externalValidation": "CI postgres service job"
+    },
+    {
+      "id": "P2-R5",
+      "phase": 2,
+      "title": "Explicit repository transaction binding (withExecutor)",
+      "status": "done",
+      "files": ["packages/data/src/provider.ts"],
+      "migrations": [],
+      "tests": ["transaction-integration.test.ts"],
+      "commitSha": "16536c2/81d4b78",
+      "acceptanceEvidence": "withExecutor(tx) binds all repos to tx; atomic rollback across repos proven.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P2-R7",
+      "phase": 2,
+      "title": "Dual-database transaction contract suite + fault injection",
+      "status": "done",
+      "files": [
+        "packages/data/src/transaction-contract.test.ts",
+        "packages/data/src/transaction-integration.test.ts",
+        "server/src/pg-transaction.integration.test.ts"
+      ],
+      "migrations": [],
+      "tests": ["12 SQLite contract + 7 binding/fault + 6 PG fake-pool + 1 gated real-PG"],
+      "commitSha": "81d4b78",
+      "acceptanceEvidence": "no partial durable state after failure at any boundary; real SQLite verified.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P2-CI",
+      "phase": 2,
+      "title": "CI PostgreSQL service job",
+      "status": "done",
+      "files": [".github/workflows/ci.yml"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": "b9fd2ae",
+      "acceptanceEvidence": "postgres:16 service + DATABASE_URL runs server tests incl. gated real-PG integration.",
+      "risks": ["remote CI run status not observed in-session"],
+      "externalValidation": "GitHub Actions run"
+    },
+    {
+      "id": "P2-STATUS",
+      "phase": 2,
+      "title": "Phase 2 overall",
+      "status": "IMPLEMENTED_NOT_POSTGRES_VERIFIED",
+      "files": ["docs/productization/adr/0005-transaction-boundaries.md"],
+      "migrations": [],
+      "tests": [],
+      "commitSha": "b9fd2ae",
+      "acceptanceEvidence": "All acceptance criteria met on real SQLite; PostgreSQL implemented + CI-configured but not verified against a real server in this environment.",
+      "risks": ["do not close RK-02 until Phase 3 authoritative commands use transactions"],
+      "externalValidation": "CI postgres job execution"
     }
   ]
 }

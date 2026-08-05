@@ -5,12 +5,13 @@ Severity: **S1** launch-blocking correctness/legal/security · **S2** major ·
 
 | ID | Risk | Sev | Evidence / trigger | Mitigation (phase) | Status |
 |---|---|---|---|---|---|
-| RK-01 | Hardcoded 19% VAT wrong after 2025 RO rate change | S1 | `tva.ts` const; `produs.ts` default 19 | Temporal tax engine + verified seed (P1) | open |
-| RK-02 | Posting not atomic (no DB transaction) | S1 | `SqlExecutor` has no `transaction()` | Transaction abstraction (P2) | open |
+| RK-01 | Hardcoded 19% VAT wrong after 2025 RO rate change | S1→S3 | was `tva.ts` const/`produs.ts` default 19 | **Downgraded**: temporal engine + persisted rules + runtime wiring done; silent default removed (guard test). Remaining: external review of per-good category mapping | downgraded |
+| RK-02 | Posting not atomic (no DB transaction) | S1→S2 | was no `transaction()` | **Downgraded**: transaction abstraction implemented + real-SQLite contract/fault-injection tests. Not closed until Phase 3 authoritative commands use it | downgraded |
 | RK-03 | Stock/accounting derived, not persisted → not immutable/auditable | S1 | no ledger tables | Immutable ledgers (P5, P6) | open |
 | RK-04 | Posted documents editable/deletable via generic CRUD | S1 | generic repo contract | Lifecycle + commands (P3) | open |
 | RK-05 | Duplicate numbers/postings under concurrency | S1 | no unique constraint at posting, no idempotency | Locking + idempotency + DB constraint (P4) | open |
-| RK-06 | Concurrent overselling (negative stock) | S1 | in-memory CMP, no locking | `BEGIN IMMEDIATE` + ledger + policy (P2, P5) | open |
+| RK-06 | Concurrent overselling (negative stock) | S1 | in-memory CMP, no locking | `BEGIN IMMEDIATE` now available (P2); ledger + policy still needed (P5) | partially mitigated |
+| RK-18 | Migration runner dropped statements after leading comments (never run on real DB) | S1→closed | 0001's first CREATE TABLE dropped by naive splitter | **Closed**: quote-aware splitter + real-SQLite migration test (P2 work) | closed |
 | RK-07 | Fiscal reports may double-count NIR↔invoice | S1 | derived from doc lists | Fiscal-event layer (P7) | open |
 | RK-08 | e-Factura not a durable SPV workflow; no official validation | S1 | generate/download XML only | SPV state machine + validator (P8) | open |
 | RK-09 | SAF-T subset unvalidated vs official validator | S1 | structural subset | Canonical SAF-T + validator (P9) | open |

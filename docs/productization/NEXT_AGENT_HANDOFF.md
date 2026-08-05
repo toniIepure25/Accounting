@@ -1,79 +1,81 @@
 # Next-agent handoff
 
-Continuation state for the productization program. Read this + the ledger before
-resuming; do not restart planning from zero.
+Continuation state. Read this + the ledger before touching code. Do not restart
+planning or repeat Phase 0.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `e8fe000` (worktree clean)
-- Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). **Note:** `git push`
-  is blocked by the sandbox's auto-mode classifier (outward-facing to a public
-  repo). The user must run `git push` themselves, or grant a Bash permission rule.
-  Local commits are ahead of `origin/main` after this session — confirm with
-  `git status -sb` / `git log origin/main..HEAD`.
+- HEAD SHA: `b9fd2ae` (worktree clean after doc commit)
+- Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
+  blocked for the agent by the sandbox classifier — the USER must push. Confirm
+  ahead/behind with `git log --oneline origin/main..HEAD`.
 
-## Completed this session
-- **Phase 0 (done):** `docs/productization/` — BASELINE_AUDIT.md,
-  MASTER_PRODUCTIZATION_PLAN.md (20 phases, requirement IDs), EXECUTION_LEDGER.json,
-  ADR-0001..0004, RISK_REGISTER.md, RELEASE_READINESS.md. Commit `ebd8338`.
-- **Phase 1 core (done):** `packages/core-domain/src/tva-temporal.ts` +
-  `tva-temporal.test.ts` — effective-dated VAT engine; RO rates verified against
-  authoritative sources (Law 141/2025, effective 2025-08-01: 19%→21%, 5%&9%→11%).
-  13 tests green. Commit `e8fe000`.
+## Completed
+- **Phase 0** (done): baseline + governance artifacts.
+- **Phase 1 — effective-dated RO VAT** (**complete** at the safely-supported level):
+  temporal engine (`tva-temporal.ts`), persisted `tax_rules` (migrations 0011/0012)
+  with real-SQLite tests, `TaxRuleRepository` + DB-vs-domain equivalence, product
+  `codCategorieFiscala` + backfill, silent 19% default removed (guard test),
+  DocumentEditor resolves via engine, read-only admin registry. Primary-official
+  evidence recorded (Law 141/2025, ANAF text read directly). `P1-R5b` (immutable
+  posted-line tax snapshot) is intentionally **blocked by Phase 3** — nullable
+  snapshot columns already added to `documente_linii` (forward-compatible).
+- **Phase 2 — transactions** (**IMPLEMENTED_NOT_POSTGRES_VERIFIED**):
+  `SqlExecutor.transaction`, error taxonomy (`tx-errors.ts`), real-SQLite impl
+  (`better-sqlite.ts`, tested), Tauri impl (mirrored), PostgreSQL impl
+  (`pg-executor.ts`, dedicated client + bounded retry + whitelisted isolation),
+  `withExecutor(tx)` repo binding, 12 SQLite contract tests + 7 binding/fault +
+  6 PG fake-pool + 1 gated real-PG (skipped locally), ADR-0005, CI postgres job.
 
-## Current test/build state (evidence)
-- `npm run typecheck` → 10/10 packages OK.
-- `npm test` → **192 tests** (core-domain now **94**, others unchanged:
-  data 22, license 22, ui 19, fiscal-ro 11, auth 10, sync 9, ai 5).
+## Current test/build state (evidence, this session)
+- `npm run typecheck` → 10/10.
+- `npx turbo run test --force` → **236 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 99, data 52, license 22, ui 22, fiscal-ro 11,
+  auth 10, sync 9, ai 5, server 6.
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
-- `npm run build:web` → OK (verified earlier). E2E → 4 green (verified earlier).
-- **Not run this session:** PostgreSQL integration, Tauri build, e2e re-run
-  (unaffected by pure-domain changes). No fabricated results.
+- `npm run build:web` → OK (~372 kB).
+- **Not run in-env:** real PostgreSQL (needs the CI service), Tauri native build,
+  e2e was updated (595→605) but not re-run this session — re-run before relying on it.
 
-## Next highest-priority action
-Finish **Phase 1** then proceed to **Phase 2** (both launch-blocking), in order:
+## Next priority: Phase 3 — authoritative application commands + transactional document aggregate
+Start from the PROVEN transaction foundation:
+1. Create `packages/application` with real command handlers (not empty interfaces,
+   not CRUD wrappers). First target: `PostDocument` writing document + lines +
+   (later) stock + journal + audit inside ONE `exec.transaction(...)` via
+   `withExecutor(tx)`. Reuse the fault-injection harness pattern from
+   `transaction-integration.test.ts` for partial-write safety.
+2. Persist the immutable tax snapshot on posted lines (`P1-R5b`): fill
+   `tax_rule_id`/`tax_rule_version`/`resolved_tax_rate_bp`/`tax_category`/
+   `tax_legal_reference`/`tax_resolution_snapshot` (columns already exist) using
+   `rezolvaTvaPersistat`.
+3. Document lifecycle (ADR-0003): draft→approved→posted→reversed|cancelled;
+   block PATCH/DELETE on posted docs; corrections via reversal/credit note.
+4. Optimistic locking + idempotency + DB-unique numbering (Phase 4) follow.
 
-1. **P1-R2b** — persist tax rules: new migration `0011_tax_rules.sql` (temporal
-   `tax_rules` table: id, versiune, jurisdictie, categorie, cod_categorie_fiscala,
-   procent, valid_de_la, valid_pana_la, referinta_legala, descriere), seed
-   `REGULI_TVA_RO`, a query service, an admin screen, and **wire the runtime**:
-   replace the hardcoded `COTE_TVA_RO.STANDARD` default in
-   `packages/core-domain/src/entities/produs.ts` and any UI VAT pickers so the
-   effective rule drives the rate. Remove the stale `cote_tva` table or migrate it.
-   (`entities/produs.ts:20` currently defaults `cotaTvaProcent` to 19.)
-2. **P1-R5** — persist the resolved rule/version on posted lines. **Blocked by P3**
-   (needs the document aggregate + posting); do it when P3 lands.
-3. **Phase 2 (P2-R1..R3)** — add `SqlExecutor.transaction(options, work)` with
-   SQLite (`BEGIN IMMEDIATE`) + PostgreSQL (serialization retry) implementations
-   and a fault-injection test that proves no partial mutation after a failure at
-   each step. This unblocks Phases 3/5/6.
+Do NOT: create superficial empty `packages/application`; call a state patch
+"posting"; claim atomic business posting from the transaction helper alone;
+mark posted docs immutable before all modification paths are blocked.
 
-## Forbidden regressions (do not undo)
-- Do not reintroduce a silent VAT default; keep `RegulaTvaInexistenta`.
-- Do not delete/rewrite `tva.ts` (`calculLinie`, `COTE_TVA_RO`) — widely used;
-  the temporal engine composes with it (resolve → percent → `calculLinie`).
-- Do not mutate historical/posted tax treatment when rules change.
-- Keep money in minor units (`Bani`); no floats.
-- Do not weaken the 192-test / 10-typecheck / clean-lint baseline.
-
-## Key design decisions (context)
-- Tax rules are DATA with half-open validity `[validDeLa, validPanaLa)`; product
-  carries a stable `codCategorieFiscala`, rate changes via new rule versions.
-- `redus_9` / `redus_5` are historical fiscal categories both folding to 11% from
-  2025-08-01; fine-grained product→category mapping (secondary legislation) is a
-  later refinement — seed is correct at the *rate* level on both sides.
-- ADRs 0001–0004 define the target: command/application layer, immutable ledgers +
-  transactions, document lifecycle, effective-dated tax rules.
+## Forbidden regressions
+- Keep `RegulaTvaInexistenta` (no silent VAT default); keep the guard test green.
+- Do not reintroduce `.default(19)` on entity VAT fields.
+- Do not weaken the transaction contract (rollback preserves original error;
+  bound executor throws after completion; PG always releases; retry only on
+  40001/40P01).
+- Keep money in minor units; keep migrations passing on real SQLite.
+- Do not close RK-02 until Phase 3 commands actually use transactions.
 
 ## Environment gotchas
-- Windows: `tsx watch` respawns fight over port 8787; kill with
-  `Get-NetTCPConnection -LocalPort 8787 | Stop-Process`, NOT `pkill`.
-- Turbo caches test output; use `npx turbo run test --force` to see counts.
+- Windows: kill stray servers with `Get-NetTCPConnection -LocalPort <p> | Stop-Process`, not `pkill`.
+- Turbo caches tests; use `npx turbo run test --force` for counts.
+- `better-sqlite3` is the Node test SQLite (dev-dep in `@gr/data`), NOT exported
+  from the package index (keeps the native module out of the web bundle).
 
 ## Continuation prompt (paste to resume)
-> Resume the Accounting productization program from `docs/productization/`.
-> HEAD `e8fe000`, Phase 0 done, Phase 1 core done. Next: P1-R2b (persist tax
-> rules migration + admin UI + wire runtime off the hardcoded 19% default in
-> entities/produs.ts), then Phase 2 (SqlExecutor.transaction with SQLite/PG +
-> fault-injection tests). Follow the operating principles and update the ledger +
-> handoff as you go. No claim without evidence.
+> Resume the Accounting productization program. HEAD `b9fd2ae`. Phase 0/1 done,
+> Phase 2 IMPLEMENTED_NOT_POSTGRES_VERIFIED. Begin Phase 3: create
+> `packages/application` with a real transactional `PostDocument` command
+> (document + lines + tax snapshot, atomic via `withExecutor(tx)`), persist the
+> posted-line tax snapshot (P1-R5b), and enforce the document lifecycle
+> (posted = immutable). Use the fault-injection harness for partial-write tests.
+> Update the ledger + handoff. No claim without evidence.
