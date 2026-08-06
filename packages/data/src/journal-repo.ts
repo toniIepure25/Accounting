@@ -78,3 +78,31 @@ export async function listeazaLiniiJurnal(
     'SELECT cont AS cont, debit_bani AS debitBani, credit_bani AS creditBani FROM journal_lines',
   );
 }
+
+/** Liniile jurnalului pe un interval de date (+ firma) — pentru SAF-T / balanta pe perioada. */
+export async function listeazaLiniiJurnalInterval(
+  exec: SqlExecutor,
+  interval: { de?: string; pana?: string; firmaId?: string | null } = {},
+): Promise<Postare[]> {
+  const conditii: string[] = [];
+  const params: unknown[] = [];
+  if (interval.de) {
+    conditii.push('je.data >= ?');
+    params.push(interval.de);
+  }
+  if (interval.pana) {
+    conditii.push('je.data <= ?');
+    params.push(interval.pana);
+  }
+  if (interval.firmaId != null) {
+    conditii.push('je.firma_id = ?');
+    params.push(interval.firmaId);
+  }
+  const where = conditii.length > 0 ? ` WHERE ${conditii.join(' AND ')}` : '';
+  return exec.select<Postare>(
+    `SELECT jl.cont AS cont, jl.debit_bani AS debitBani, jl.credit_bani AS creditBani
+       FROM journal_lines jl JOIN journal_entries je ON je.id = jl.entry_id${where}
+      ORDER BY je.data, je.created_at, jl.id`,
+    params,
+  );
+}

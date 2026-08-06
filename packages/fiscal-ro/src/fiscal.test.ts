@@ -5,7 +5,7 @@ import { sumarD390 } from './d390.js';
 import { sumarD394Achizitii, sumarD394Livrari } from './d394.js';
 import { decontTVA, decontTVADetaliat } from './decont.js';
 import { type EFacturaInput, genereazaEFacturaXML } from './efactura.js';
-import { genereazaSaftXML } from './saft.js';
+import { agregaGeneralLedger, genereazaSaftXML, reconciliazaGeneralLedger } from './saft.js';
 
 describe('CUI', () => {
   it('valideaza cifra de control (CUI real)', () => {
@@ -317,5 +317,41 @@ describe('SAF-T D406 (subset)', () => {
     expect(xml).toContain('Client SRL');
     expect(xml).toContain('Furnizor SRL');
     expect(xml).toContain('FCT-1');
+  });
+});
+
+describe('SAF-T General Ledger (din jurnalul persistat)', () => {
+  const postari = [
+    { cont: '371', debitBani: 10000, creditBani: 0 },
+    { cont: '4426', debitBani: 2100, creditBani: 0 },
+    { cont: '401', debitBani: 0, creditBani: 12100 },
+    { cont: '607', debitBani: 4000, creditBani: 0 },
+    { cont: '371', debitBani: 0, creditBani: 4000 },
+  ];
+
+  it('agrega pe cont: rulaje + sold', () => {
+    const gl = agregaGeneralLedger(postari);
+    const c371 = gl.find((r) => r.cont === '371')!;
+    expect(c371.totalDebitBani).toBe(10000);
+    expect(c371.totalCreditBani).toBe(4000);
+    expect(c371.soldDebitorBani).toBe(6000); // sold debitor 371
+  });
+
+  it('reconciliere: Σdebit == Σcredit (partida dubla)', () => {
+    const rec = reconciliazaGeneralLedger(agregaGeneralLedger(postari));
+    expect(rec.echilibrat).toBe(true);
+    expect(rec.totalDebitBani).toBe(rec.totalCreditBani);
+  });
+
+  it('XML-ul SAF-T include GeneralLedgerEntries din postari', () => {
+    const xml = genereazaSaftXML({
+      companie: { nume: 'X', cui: 'RO1', perioadaLuna: 3, perioadaAn: 2026 },
+      parteneri: [],
+      produse: [],
+      documente: [],
+      postariJurnal: postari,
+    });
+    expect(xml).toContain('<GeneralLedgerEntries>');
+    expect(xml).toContain('<AccountID>371</AccountID>');
   });
 });
