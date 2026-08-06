@@ -13,6 +13,7 @@ import {
   recalculeazaAgregat,
 } from '@gr/core-domain';
 import { withExecutor } from '@gr/data';
+import { stornoContabilitateDocument } from './accounting.js';
 import { type DocumentCuLinii, DocumentInexistentError, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
 import { stornoStocDocument } from './stock.js';
@@ -186,6 +187,18 @@ export async function reverseDocument(
     // Storneaza in registrul de stoc: intrari compensatorii (negate) pe documentul
     // de stornare; soldurile revin la valoarea de dinainte de postare.
     await stornoStocDocument(tx, id, stornoId, dataStorno, document.firmaId ?? null, t);
+
+    // Storneaza contabil: nota cu debit/credit inversat, legata de documentul de
+    // stornare; registrul-jurnal se aduce la zero pe partea originalului.
+    await stornoContabilitateDocument(
+      tx,
+      id,
+      stornoId,
+      stornoDoc.cod,
+      dataStorno,
+      document.firmaId ?? null,
+      t,
+    );
 
     return incarcaDocumentCuLinii(repos, stornoId);
   });

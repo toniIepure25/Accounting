@@ -16,6 +16,7 @@ import {
   validaPentruPostare,
 } from '@gr/core-domain';
 import { withExecutor } from '@gr/data';
+import { emiteContabilitateDocument } from './accounting.js';
 import { cuIdempotenta } from './idempotency.js';
 import { type DocumentCuLinii, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
@@ -103,13 +104,17 @@ export async function postDocument(
 
       // 7. emite miscarile in registrul de stoc, in ACEEASI tranzactie. O iesire
       // sub zero (politica implicita `interzice`) arunca => rollback total.
-      await emiteStocDocument(
+      const stoc = await emiteStocDocument(
         tx,
         docPostat,
         validat.linii,
         optiuni.politicaStocNegativ ?? 'interzice',
         t,
       );
+
+      // 8. emite nota contabila (partida dubla, echilibrata) in registrul-jurnal,
+      // folosind COGS-ul din stoc pentru descarcarea de gestiune. Tot atomic.
+      await emiteContabilitateDocument(tx, docPostat, stoc.costIesireBani, t);
 
       return incarcaDocumentCuLinii(repos, id);
     };

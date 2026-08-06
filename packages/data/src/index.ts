@@ -11,6 +11,7 @@ export * from './firma-scope.js';
 export * from './licenta-guard.js';
 export * from './tax-rule-repo.js';
 export * from './stock-ledger-repo.js';
+export * from './journal-repo.js';
 export * from './backup.js';
 export * from './provider.js';
 export * from './demo-seed.js';

@@ -27,10 +27,17 @@ type DocStoc = Pick<
   'id' | 'data' | 'tip' | 'gestiuneId' | 'gestiuneDestinatieId' | 'firmaId'
 >;
 
+export interface RezultatEmisieStoc {
+  avertismente: string[];
+  /** Costul (CMP) total al iesirilor de stoc ale documentului — COGS pentru nota contabila. */
+  costIesireBani: number;
+}
+
 /**
  * Emite in registrul de stoc miscarile unui document postat. Intoarce
- * avertismentele (politica `avertizeaza`). Sub politica `interzice`, o iesire sub
- * zero arunca `StocInsuficientError` care aborteaza toata tranzactia de postare.
+ * avertismentele (politica `avertizeaza`) si costul iesirilor (COGS, pentru nota
+ * contabila). Sub politica `interzice`, o iesire sub zero arunca
+ * `StocInsuficientError` care aborteaza toata tranzactia de postare.
  */
 export async function emiteStocDocument(
   tx: SqlExecutor,
@@ -38,7 +45,7 @@ export async function emiteStocDocument(
   linii: readonly DocumentLinie[],
   politica: PoliticaStocNegativ,
   acum: string,
-): Promise<string[]> {
+): Promise<RezultatEmisieStoc> {
   // Incarca soldurile de start pentru toate perechile (gestiune, produs) atinse.
   const balante = new Map<string, SoldCurent>();
   const seed = async (gestiuneId: string | null, produsId: string) => {
@@ -72,7 +79,10 @@ export async function emiteStocDocument(
       acum,
     );
   }
-  return r.avertismente;
+
+  // COGS = suma valorilor de iesire (intrari cu cantitate < 0), in valoare absoluta.
+  const costIesireBani = r.entries.reduce((s, e) => (e.cantitate < 0 ? s - e.valoareBani : s), 0);
+  return { avertismente: r.avertismente, costIesireBani };
 }
 
 /**
