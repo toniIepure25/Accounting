@@ -26,7 +26,7 @@ specs where applicable. No claim without evidence.
 | 6 | Persistent immutable accounting ledger | yes | done (effective posting profiles = later refinement) |
 | 7 | Fiscal event ledger + D300/D394/D390 | yes | done (D300 base from events; D394/D390 XML = external gate) |
 | 8 | e-Factura end-to-end (SPV workflow) | yes | done (durable+idempotent; real SPV/validator = external gate) |
-| 9 | SAF-T / D406 canonical | yes | todo |
+| 9 | SAF-T / D406 canonical | yes | done (GL from journal, reconciles; ANAF validator = external gate) |
 | 10 | Multi-company correctness + period closing | yes | todo |
 | 11 | Auth freshness + security hardening | yes | todo |
 | 12 | Sync/offline redesign (no LWW for posted data) | yes | todo |
@@ -133,11 +133,21 @@ specs where applicable. No claim without evidence.
   real SQLite. Official ANAF XSD/CIUS-RO validation, digital signature, and a live
   SPV round-trip are external commercial gates.
 
-### P9–P20
+### P9 — SAF-T / D406 canonical — **done**
+- **P9-R1** SAF-T GeneralLedgerEntries sourced from the persisted journal +
+  balance reconciliation + XML — **done** (`fiscal-ro/saft.ts`).
+- **P9-R2** Application builder assembles the D406 AuditFile from persisted ledgers
+  for a period; SAF-T GL reconciles to the trial balance — **done** — verified on
+  real SQLite.
+- Acceptance: SAF-T derives from persisted ledgers and reconciles to the
+  journal/trial-balance; structural validity checked. Official ANAF SAF-T
+  validator + full D406 field coverage + opening balances are external gates.
+
+### P10–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (SAF-T canonical, multi-company, auth freshness, sync redesign,
-query/perf, furniture depth, UX, backup/DR, CI/CD, licensing, legacy migration,
-docs/legal). IDs assigned when work starts, to avoid speculative churn.
+the program spec (multi-company correctness + period close, auth freshness, sync
+redesign, query/perf, furniture depth, UX, backup/DR, CI/CD, licensing, legacy
+migration, docs/legal). IDs assigned when work starts, to avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal
