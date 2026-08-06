@@ -21,7 +21,7 @@ specs where applicable. No claim without evidence.
 | 1 | Temporal (effective-dated) tax engine + current RO VAT | yes | done (P1-R5b posted-line snapshot blocked by P3) |
 | 2 | Transaction-capable persistence | yes | IMPLEMENTED_NOT_POSTGRES_VERIFIED |
 | 3 | Application commands + document aggregate | yes | done (UI/transport wiring per mode remaining) |
-| 4 | Optimistic locking, numbering, idempotency | yes | todo |
+| 4 | Optimistic locking, numbering, idempotency | yes | done (real-PG concurrency race = CI only) |
 | 5 | Persistent immutable stock ledger | yes | todo |
 | 6 | Persistent immutable accounting ledger | yes | todo |
 | 7 | Fiscal event ledger + D300/D394/D390 | yes | todo |
@@ -77,11 +77,18 @@ specs where applicable. No claim without evidence.
   immutable server-side. Remaining integration: routing the UI/API transport
   through the command layer per deployment mode (memory/api/sqlite).
 
-### P4 — Concurrency & idempotency
-- **P4-R1** Optimistic locking (`version`, `expectedVersion`, conflict response).
-- **P4-R2** Idempotency store (key + request hash + stored response).
-- **P4-R3** DB unique constraint on `(company, type, year, series, number)`; allocate at authoritative step.
-- Acceptance: zero duplicate numbers/postings under concurrency + retries.
+### P4 — Concurrency & idempotency — **done**
+- **P4-R1** Optimistic locking (`version`, `expectedVersion`, conflict response) —
+  **done**: `Document.version` bumped on every authoritative write;
+  `ConflictOptimistaError` (409) on stale version.
+- **P4-R2** Idempotency store (key + request hash + stored response) — **done**:
+  `cuIdempotenta` dedupes inside the command transaction; retried `postDocument`
+  returns the stored response, allocates no second number.
+- **P4-R3** DB unique constraint on `(firma, tip, year, series, number)`; allocate
+  at authoritative step — **done**: partial unique index (WHERE numar>0); number
+  allocated at posting.
+- Acceptance: zero duplicate numbers/postings under retries — verified on real
+  SQLite. True multi-process race belongs to the PostgreSQL CI job.
 
 ### P5 — Stock ledger
 - **P5-R1** `stock_posting_batches`, `stock_ledger_entries`, `stock_balances` (+ cost layers if needed).

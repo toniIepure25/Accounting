@@ -9,15 +9,15 @@
     "status": ["todo", "in_progress", "done", "blocked"]
   },
   "baselineEvidence": {
-    "typecheck": "10/10 packages OK",
+    "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 261,
+      "total": 271,
       "skipped": 1,
-      "note": "post Phase 1+2+3; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1+2+3+4; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 111,
         "data": 52,
-        "application": 13,
+        "application": 23,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 11,
@@ -392,6 +392,70 @@
       "acceptanceEvidence": "Authoritative transactional command layer + document aggregate implemented and tested on real SQLite; posting is a business event; posted docs immutable. RK-02 closed (document posting is atomic and uses the Phase 2 transaction), RK-04 downgraded (server-enforced immutability).",
       "risks": ["stock/accounting ledger effects of posting await Phase 5/6 persistence"],
       "externalValidation": "n/a"
+    },
+    {
+      "id": "P4-R1",
+      "phase": 4,
+      "title": "Optimistic locking (version / expectedVersion + conflict response)",
+      "status": "done",
+      "files": [
+        "packages/application/src/locking.ts",
+        "packages/core-domain/src/entities/document.ts",
+        "packages/application/src/lifecycle.ts",
+        "packages/application/src/post-document.ts"
+      ],
+      "migrations": ["0014_document_versioning_idempotency.sql"],
+      "tests": ["packages/application/src/concurrency.test.ts"],
+      "commitSha": "a86d24c",
+      "acceptanceEvidence": "Document.version bumped on every authoritative write; updateDraft/approve/cancel/post/reverse accept expectedVersion; stale version => ConflictOptimistaError (409). Verified on real SQLite.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P4-R2",
+      "phase": 4,
+      "title": "Idempotency store (key + request hash + stored response)",
+      "status": "done",
+      "files": [
+        "packages/application/src/idempotency.ts",
+        "packages/application/src/post-document.ts"
+      ],
+      "migrations": ["0014_document_versioning_idempotency.sql"],
+      "tests": ["packages/application/src/concurrency.test.ts"],
+      "commitSha": "a86d24c",
+      "acceptanceEvidence": "cuIdempotenta dedupes within the command transaction; a retried postDocument with the same key returns the stored response and allocates no second number; key reuse for a different request => IdempotencyConflictError; idempotency_keys PK is the concurrency backstop. Verified on real SQLite.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P4-R3",
+      "phase": 4,
+      "title": "DB unique constraint on document numbering; allocate at authoritative step",
+      "status": "done",
+      "files": ["db/migrations/0014_document_versioning_idempotency.sql"],
+      "migrations": ["0014_document_versioning_idempotency.sql"],
+      "tests": ["packages/application/src/concurrency.test.ts"],
+      "commitSha": "a86d24c",
+      "acceptanceEvidence": "Partial unique index ux_documente_numar on (firma_id, tip, year(data), serie, numar) WHERE numar>0 rejects a duplicate number; drafts (numar 0) don't collide; number allocated at posting (P3). Verified on real SQLite.",
+      "risks": [
+        "index treats NULL firma_id as distinct (SQL standard) — legacy null-firma rows rely on the allocator, not the DB backstop"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P4-STATUS",
+      "phase": 4,
+      "title": "Phase 4 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": ["packages/application/src/concurrency.test.ts"],
+      "commitSha": "a86d24c",
+      "acceptanceEvidence": "Zero duplicate numbers/postings under retry: optimistic locking + idempotent replay + DB unique backstop, all verified on real SQLite. RK-05 downgraded.",
+      "risks": [
+        "true multi-process concurrency exercised on PostgreSQL only in CI (SQLite test is single-connection); real-PG numbering race not run in-env"
+      ],
+      "externalValidation": "CI postgres job"
     }
   ]
 }
