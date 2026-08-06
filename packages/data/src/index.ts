@@ -13,6 +13,7 @@ export * from './tax-rule-repo.js';
 export * from './stock-ledger-repo.js';
 export * from './journal-repo.js';
 export * from './fiscal-events-repo.js';
+export * from './efactura-repo.js';
 export * from './backup.js';
 export * from './provider.js';
 export * from './demo-seed.js';

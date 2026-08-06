@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@gr/core-domain": "*",
-    "@gr/data": "*"
+    "@gr/data": "*",
+    "@gr/fiscal-ro": "*"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

@@ -10,6 +10,7 @@ export * from './reports.js';
 export * from './contabilitate.js';
 export * from './journal.js';
 export * from './fiscal-events.js';
+export * from './efactura-spv.js';
 export * from './nesting.js';
 export * from './mobila.js';
 export * from './audit.js';
