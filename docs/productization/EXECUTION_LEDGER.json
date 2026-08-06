@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 309,
+      "total": 320,
       "skipped": 1,
-      "note": "post Phase 1-7; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-8; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 132,
+        "core-domain": 136,
         "data": 52,
-        "application": 40,
+        "application": 47,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 11,
@@ -603,6 +603,61 @@
         "official declaration XML + ANAF validator sign-off is a commercial-readiness gate (external, out of code scope)"
       ],
       "externalValidation": "external accountant + ANAF validators"
+    },
+    {
+      "id": "P8-R1",
+      "phase": 8,
+      "title": "Durable e-Factura SPV state machine + persisted submissions",
+      "status": "done",
+      "files": [
+        "db/migrations/0018_efactura_submissions.sql",
+        "packages/core-domain/src/efactura-spv.ts",
+        "packages/data/src/efactura-repo.ts"
+      ],
+      "migrations": ["0018_efactura_submissions.sql"],
+      "tests": [
+        "packages/core-domain/src/efactura-spv.test.ts",
+        "packages/application/src/efactura.test.ts"
+      ],
+      "commitSha": "8d2bef8",
+      "acceptanceEvidence": "efactura_submissions persists a per-document lifecycle (ciorna_xml->validat->incarcat->acceptat|respins, eroare=retryable) with ANAF upload index / status / download id; pure state machine enforces transitions; partial unique index prevents a second active submission. Verified on real SQLite.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P8-R2",
+      "phase": 8,
+      "title": "CIUS-RO XML from posted invoice + structural validation; idempotent upload/poll",
+      "status": "done",
+      "files": [
+        "packages/fiscal-ro/src/efactura-builder.ts",
+        "packages/application/src/efactura.ts"
+      ],
+      "migrations": [],
+      "tests": ["packages/application/src/efactura.test.ts"],
+      "commitSha": "8d2bef8",
+      "acceptanceEvidence": "pregatesteEfactura builds CIUS-RO UBL XML from the posted invoice + firma + partener, validates structurally, persists (idempotent). incarcaEfactura uploads via an injected uploader (no real ANAF call in-env), idempotent (a retry never re-submits; the uploader is called once across retries); transport failure -> retryable eroare; inregistreazaRaspunsSpv records accept/reject. Verified on real SQLite with a fake uploader.",
+      "risks": [
+        "official ANAF/SPV XSD + CIUS-RO business-rule validation and a real SPV round-trip cannot run in-env (no ANAF credentials) — EXTERNAL_REVIEW_REQUIRED",
+        "digital signature + real SPV transport live in the server/desktop integration, not the command layer"
+      ],
+      "externalValidation": "official ANAF e-Factura validator + live SPV (cannot run in-env)"
+    },
+    {
+      "id": "P8-STATUS",
+      "phase": 8,
+      "title": "Phase 8 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/efactura-spv.test.ts",
+        "packages/application/src/efactura.test.ts"
+      ],
+      "commitSha": "8d2bef8",
+      "acceptanceEvidence": "An invoice has a durable, auditable SPV lifecycle; XML is built from the posted document and structurally valid; upload is idempotent (no double submission under retry). RK-08 downgraded. Real ANAF validation/round-trip remains an external gate.",
+      "risks": ["real SPV round-trip + official validator sign-off is a commercial-readiness gate"],
+      "externalValidation": "official ANAF validators + live SPV"
     }
   ]
 }

@@ -25,7 +25,7 @@ specs where applicable. No claim without evidence.
 | 5 | Persistent immutable stock ledger | yes | done (UI report wiring remaining) |
 | 6 | Persistent immutable accounting ledger | yes | done (effective posting profiles = later refinement) |
 | 7 | Fiscal event ledger + D300/D394/D390 | yes | done (D300 base from events; D394/D390 XML = external gate) |
-| 8 | e-Factura end-to-end (SPV workflow) | yes | todo |
+| 8 | e-Factura end-to-end (SPV workflow) | yes | done (durable+idempotent; real SPV/validator = external gate) |
 | 9 | SAF-T / D406 canonical | yes | todo |
 | 10 | Multi-company correctness + period closing | yes | todo |
 | 11 | Auth freshness + security hardening | yes | todo |
@@ -122,12 +122,22 @@ specs where applicable. No claim without evidence.
   across NIR+invoice; totals reconcile to accounting — verified on real SQLite.
   Official D394/D390 XML + ANAF validator sign-off is an external commercial gate.
 
-### P8–P20
+### P8 — e-Factura SPV workflow — **done**
+- **P8-R1** Durable persisted SPV state machine + submissions — **done**
+  (migration 0018; ciorna_xml→validat→incarcat→acceptat|respins, retryable eroare).
+- **P8-R2** CIUS-RO XML from the posted invoice + structural validation; idempotent
+  upload/poll — **done** (`efactura-builder.ts` + command layer; injected uploader,
+  no double submission under retry).
+- Acceptance: an invoice has a durable, auditable SPV lifecycle; XML is built from
+  the posted document and structurally valid; upload is idempotent — verified on
+  real SQLite. Official ANAF XSD/CIUS-RO validation, digital signature, and a live
+  SPV round-trip are external commercial gates.
+
+### P9–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (e-Factura SPV workflow, SAF-T canonical, multi-company, auth
-freshness, sync redesign, query/perf, furniture depth, UX, backup/DR, CI/CD,
-licensing, legacy migration, docs/legal). IDs assigned when work starts, to avoid
-speculative churn.
+the program spec (SAF-T canonical, multi-company, auth freshness, sync redesign,
+query/perf, furniture depth, UX, backup/DR, CI/CD, licensing, legacy migration,
+docs/legal). IDs assigned when work starts, to avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal
