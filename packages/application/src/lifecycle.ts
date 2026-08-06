@@ -14,6 +14,7 @@ import {
 } from '@gr/core-domain';
 import { withExecutor } from '@gr/data';
 import { stornoContabilitateDocument } from './accounting.js';
+import { stornoEvenimenteFiscaleDocument } from './fiscal.js';
 import { type DocumentCuLinii, DocumentInexistentError, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
 import { stornoStocDocument } from './stock.js';
@@ -195,6 +196,17 @@ export async function reverseDocument(
       id,
       stornoId,
       stornoDoc.cod,
+      dataStorno,
+      document.firmaId ?? null,
+      t,
+    );
+
+    // Storneaza fiscal: evenimente compensatorii (baza + TVA negate) pe documentul
+    // de stornare; decontul perioadei reflecta anularea.
+    await stornoEvenimenteFiscaleDocument(
+      tx,
+      id,
+      stornoId,
       dataStorno,
       document.firmaId ?? null,
       t,

@@ -12,6 +12,7 @@ export * from './idempotency.js';
 export * from './tax-snapshot.js';
 export * from './stock.js';
 export * from './accounting.js';
+export * from './fiscal.js';
 export * from './post-document.js';
 export * from './lifecycle.js';
 export * from './guards.js';

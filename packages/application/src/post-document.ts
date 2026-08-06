@@ -16,7 +16,8 @@ import {
   validaPentruPostare,
 } from '@gr/core-domain';
 import { withExecutor } from '@gr/data';
-import { emiteContabilitateDocument } from './accounting.js';
+import { emiteContabilitateDocument, esteFacturaAcoperitaDeNir } from './accounting.js';
+import { emiteEvenimenteFiscaleDocument } from './fiscal.js';
 import { cuIdempotenta } from './idempotency.js';
 import { type DocumentCuLinii, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
@@ -112,9 +113,18 @@ export async function postDocument(
         t,
       );
 
+      // Potrivirea 3-way (NIR ~ factura) se calculeaza o data si se partajeaza
+      // intre jurnal si evenimente fiscale — o factura acoperita de NIR nu
+      // produce nici nota, nici fapt fiscal duplicat.
+      const sursaNir = await esteFacturaAcoperitaDeNir(tx, docPostat);
+
       // 8. emite nota contabila (partida dubla, echilibrata) in registrul-jurnal,
       // folosind COGS-ul din stoc pentru descarcarea de gestiune. Tot atomic.
-      await emiteContabilitateDocument(tx, docPostat, stoc.costIesireBani, t);
+      await emiteContabilitateDocument(tx, docPostat, stoc.costIesireBani, sursaNir, t);
+
+      // 9. emite faptele fiscale (baza + TVA pe cota/directie) in registrul de
+      // evenimente — sursa declaratiilor D300/D394/D390. Tot atomic.
+      await emiteEvenimenteFiscaleDocument(tx, docPostat, validat.linii, sursaNir, t);
 
       return incarcaDocumentCuLinii(repos, id);
     };

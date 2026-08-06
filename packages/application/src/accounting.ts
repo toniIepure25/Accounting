@@ -10,6 +10,21 @@ import { type SqlExecutor, listeazaLiniiJurnalDocument, scrieNotaContabila } fro
 import type { Document } from './types.js';
 
 /**
+ * Potrivire 3-way: o factura de cumparare legata de un NIR (receptie_furnizor)
+ * POSTAT e doar potrivire (NIR-ul a miscat stocul si a generat deja nota +
+ * faptul fiscal) — nu genereaza a doua nota/eveniment. Se calculeaza o singura
+ * data la postare si se refoloseste la jurnal + evenimente fiscale.
+ */
+export async function esteFacturaAcoperitaDeNir(tx: SqlExecutor, doc: Document): Promise<boolean> {
+  if (doc.tip !== 'factura_cumparare' || !doc.documentSursaId) return false;
+  const [sursa] = await tx.select<{ tip: string; stare: string }>(
+    'SELECT tip, stare FROM documente WHERE id = ?',
+    [doc.documentSursaId],
+  );
+  return sursa?.tip === 'receptie_furnizor' && sursa?.stare === 'validat';
+}
+
+/**
  * Emite nota contabila a unui document postat in registrul-jurnal. `costIesireBani`
  * este COGS-ul din registrul de stoc (descarcarea de gestiune). Documentele fara
  * efect financiar (transfer/proforma/etc.) sau facturile de cumparare deja
@@ -19,19 +34,9 @@ export async function emiteContabilitateDocument(
   tx: SqlExecutor,
   doc: Document,
   costIesireBani: number,
+  sursaEsteNirPostat: boolean,
   acum: string,
 ): Promise<void> {
-  // Potrivire 3-way: o factura de cumparare legata de un NIR postat nu mai
-  // genereaza a doua nota de achizitie.
-  let sursaEsteNirPostat = false;
-  if (doc.tip === 'factura_cumparare' && doc.documentSursaId) {
-    const [sursa] = await tx.select<{ tip: string; stare: string }>(
-      'SELECT tip, stare FROM documente WHERE id = ?',
-      [doc.documentSursaId],
-    );
-    sursaEsteNirPostat = sursa?.tip === 'receptie_furnizor' && sursa?.stare === 'validat';
-  }
-
   const nota: NotaDocument | null = genereazaNotaDocument(doc, {
     costIesireBani,
     sursaEsteNirPostat,
