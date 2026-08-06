@@ -23,7 +23,7 @@ specs where applicable. No claim without evidence.
 | 3 | Application commands + document aggregate | yes | done (UI/transport wiring per mode remaining) |
 | 4 | Optimistic locking, numbering, idempotency | yes | done (real-PG concurrency race = CI only) |
 | 5 | Persistent immutable stock ledger | yes | done (UI report wiring remaining) |
-| 6 | Persistent immutable accounting ledger | yes | todo |
+| 6 | Persistent immutable accounting ledger | yes | done (effective posting profiles = later refinement) |
 | 7 | Fiscal event ledger + D300/D394/D390 | yes | todo |
 | 8 | e-Factura end-to-end (SPV workflow) | yes | todo |
 | 9 | SAF-T / D406 canonical | yes | todo |
@@ -100,10 +100,17 @@ specs where applicable. No claim without evidence.
   denied by default; value reconciles on transfer. Remaining: wire the UI stock
   report (`useStoc`) to the persisted balances instead of recomputing.
 
-### P6 — Accounting ledger
-- **P6-R1** `journal_entries`/`journal_lines`, effective-dated posting profiles, dimensions, periods.
-- **P6-R2** Every entry balanced (Σdebit=Σcredit); NIR↔invoice no double-count.
-- Acceptance: persisted, balanced, source-traceable; reversal nets to zero; stock↔accounting reconcile.
+### P6 — Accounting ledger — **done**
+- **P6-R1** `journal_entries`/`journal_lines` (append-only, double-entry) —
+  **done** (migration 0016). Effective-dated posting profiles / dimensions /
+  periods are a later refinement (current profile is the fixed RO monografie).
+- **P6-R2** Every entry balanced (Σdebit=Σcredit); NIR↔invoice no double-count —
+  **done**: `genereazaNotaDocument` (balanced by construction + `asertaNotaEchilibrata`),
+  emitted atomically by `postDocument` with the stock COGS; 3-way match respected;
+  reversal swaps debit/credit (nets to zero).
+- Acceptance: persisted, balanced, source-traceable; reversal nets to zero;
+  stock↔accounting reconcile (account 371 == persisted stock value) — verified on
+  real SQLite. External accountant sign-off is a commercial-readiness gate.
 
 ### P7–P20
 Detailed requirements captured in the ledger as each phase is reached, following

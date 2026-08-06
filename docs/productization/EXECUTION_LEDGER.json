@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 284,
+      "total": 297,
       "skipped": 1,
-      "note": "post Phase 1-5; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-6; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 118,
+        "core-domain": 125,
         "data": 52,
-        "application": 29,
+        "application": 35,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 11,
@@ -503,6 +503,55 @@
       "acceptanceEvidence": "Stock is a persistent immutable ledger; reports derive from it; value reconciles on transfer; overselling denied by default. RK-03 downgraded (stock persisted; accounting ledger is Phase 6), RK-06 downgraded.",
       "risks": [
         "UI reports (useStoc) still recompute in some paths — wiring them to the persisted balances is follow-up integration"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P6-R1",
+      "phase": 6,
+      "title": "Persistent append-only accounting journal (entries + lines)",
+      "status": "done",
+      "files": ["db/migrations/0016_journal_ledger.sql", "packages/data/src/journal-repo.ts"],
+      "migrations": ["0016_journal_ledger.sql"],
+      "tests": ["packages/application/src/accounting.test.ts"],
+      "commitSha": "3f108d4",
+      "acceptanceEvidence": "journal_entries + journal_lines (append-only, double-entry) on real SQLite; reports derive from the persisted journal.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P6-R2",
+      "phase": 6,
+      "title": "Balanced per-document notes; effective posting profile; no NIR<->invoice double-count; reversal nets to zero",
+      "status": "done",
+      "files": ["packages/core-domain/src/journal.ts", "packages/application/src/accounting.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/journal.test.ts",
+        "packages/application/src/accounting.test.ts"
+      ],
+      "commitSha": "3f108d4",
+      "acceptanceEvidence": "genereazaNotaDocument reuses the contabilitate.ts monografie; every note balanced (asertaNotaEchilibrata); postDocument emits it in the SAME transaction as the document + stock ledger using the stock COGS for inventory discharge; factura_cumparare matched to a posted NIR yields no second note; reverseDocument swaps debit/credit (journal nets to zero); stock<->accounting reconcile (account 371 == stock value). Verified on real SQLite.",
+      "risks": [
+        "posting profile is the fixed RO monografie (contStoc defaults 371); effective-dated profiles + dimensions/periods are a later refinement"
+      ],
+      "externalValidation": "external accountant review (out of code scope)"
+    },
+    {
+      "id": "P6-STATUS",
+      "phase": 6,
+      "title": "Phase 6 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/journal.test.ts",
+        "packages/application/src/accounting.test.ts"
+      ],
+      "commitSha": "3f108d4",
+      "acceptanceEvidence": "Accounting is a persistent immutable double-entry journal, emitted atomically with the document + stock; balanced; reversal nets to zero; stock and accounting reconcile. RK-03 closed (both stock and accounting persisted), RK-07 partially mitigated.",
+      "risks": [
+        "fiscal reports (D300/D394/D390) still derive from documents — Phase 7; external accountant sign-off required for compliance"
       ],
       "externalValidation": "n/a"
     }
