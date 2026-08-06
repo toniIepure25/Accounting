@@ -14,6 +14,7 @@ import {
 } from '@gr/core-domain';
 import { withExecutor } from '@gr/data';
 import { type DocumentCuLinii, DocumentInexistentError, incarcaDocumentCuLinii } from './load.js';
+import { asertaVersiune } from './locking.js';
 import { copiazaSnapshotLinie } from './tax-snapshot.js';
 import { type CommandDeps, type DocumentPayload, acum } from './types.js';
 
@@ -38,12 +39,18 @@ export async function createDraftDocument(
 export async function updateDraftDocument(
   deps: CommandDeps,
   id: string,
-  patch: { document?: Partial<Document>; linii?: readonly DocumentLinie[] },
+  patch: {
+    document?: Partial<Document>;
+    linii?: readonly DocumentLinie[];
+    /** Blocare optimista: versiunea asteptata a documentului (Faza 4). */
+    expectedVersion?: number;
+  },
 ): Promise<DocumentCuLinii> {
   return deps.exec.transaction({}, async (tx) => {
     const repos = withExecutor(tx);
     const current = await repos.documente.getById(id);
     if (!current) throw new DocumentInexistentError(id);
+    asertaVersiune(id, current.version, patch.expectedVersion);
     asertaEditabil(current.stare, 'update');
 
     const doc: Document = patch.document
@@ -60,7 +67,7 @@ export async function updateDraftDocument(
     }
 
     const recalc = recalculeazaAgregat(doc, linii);
-    await repos.documente.update(id, recalc.document);
+    await repos.documente.update(id, { ...recalc.document, version: current.version + 1 });
     for (const l of recalc.linii) {
       if (patch.linii) {
         await repos.documenteLinii.create({ ...l, documentId: id });
@@ -77,24 +84,34 @@ export async function updateDraftDocument(
 }
 
 /** Aproba o ciorna (ciorna -> aprobat). */
-export async function approveDocument(deps: CommandDeps, id: string): Promise<Document> {
+export async function approveDocument(
+  deps: CommandDeps,
+  id: string,
+  expectedVersion?: number,
+): Promise<Document> {
   return deps.exec.transaction({}, async (tx) => {
     const repos = withExecutor(tx);
     const doc = await repos.documente.getById(id);
     if (!doc) throw new DocumentInexistentError(id);
+    asertaVersiune(id, doc.version, expectedVersion);
     asertaTranzitie(doc.stare, STARE_DOC.APROBAT);
-    return repos.documente.update(id, { stare: STARE_DOC.APROBAT });
+    return repos.documente.update(id, { stare: STARE_DOC.APROBAT, version: doc.version + 1 });
   });
 }
 
 /** Anuleaza un document ne-postat (ciorna/aprobat -> anulat). */
-export async function cancelDocument(deps: CommandDeps, id: string): Promise<Document> {
+export async function cancelDocument(
+  deps: CommandDeps,
+  id: string,
+  expectedVersion?: number,
+): Promise<Document> {
   return deps.exec.transaction({}, async (tx) => {
     const repos = withExecutor(tx);
     const doc = await repos.documente.getById(id);
     if (!doc) throw new DocumentInexistentError(id);
+    asertaVersiune(id, doc.version, expectedVersion);
     asertaTranzitie(doc.stare, STARE_DOC.ANULAT);
-    return repos.documente.update(id, { stare: STARE_DOC.ANULAT });
+    return repos.documente.update(id, { stare: STARE_DOC.ANULAT, version: doc.version + 1 });
   });
 }
 
@@ -102,6 +119,8 @@ export interface OptiuniStornare {
   /** Data documentului de stornare (ISO). Implicit data documentului original. */
   data?: string;
   motiv?: string;
+  /** Blocare optimista: versiunea asteptata a documentului original (Faza 4). */
+  expectedVersion?: number;
 }
 
 /**
@@ -120,10 +139,14 @@ export async function reverseDocument(
   return deps.exec.transaction({ sqliteMode: 'immediate' }, async (tx) => {
     const repos = withExecutor(tx);
     const { document, linii } = await incarcaDocumentCuLinii(repos, id);
+    asertaVersiune(id, document.version, optiuni.expectedVersion);
     asertaTranzitie(document.stare, STARE_DOC.STORNAT);
 
     // 1. marcheaza originalul ca stornat
-    await repos.documente.update(id, { stare: STARE_DOC.STORNAT });
+    await repos.documente.update(id, {
+      stare: STARE_DOC.STORNAT,
+      version: document.version + 1,
+    });
 
     // 2. creeaza documentul de stornare (oglinda negata), el insusi POSTAT
     const dataStorno = optiuni.data ?? document.data;

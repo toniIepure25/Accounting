@@ -7,6 +7,8 @@
 
 export * from './types.js';
 export * from './load.js';
+export * from './locking.js';
+export * from './idempotency.js';
 export * from './tax-snapshot.js';
 export * from './post-document.js';
 export * from './lifecycle.js';

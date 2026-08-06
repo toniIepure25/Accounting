@@ -467,6 +467,7 @@ export const demoSeed: MemorySeed = {
   documente: [
     {
       id: D_NIR,
+      version: 1,
       firmaId: F_TITAN,
       tip: 'receptie_furnizor',
       serie: 'NIR',
@@ -489,6 +490,7 @@ export const demoSeed: MemorySeed = {
     },
     {
       id: D_FV,
+      version: 1,
       firmaId: F_TITAN,
       tip: 'factura_vanzare',
       serie: 'FCT',
@@ -511,6 +513,7 @@ export const demoSeed: MemorySeed = {
     },
     {
       id: D_CMD,
+      version: 1,
       firmaId: F_TITAN,
       tip: 'comanda_mobila',
       serie: 'CMD',
@@ -541,6 +544,7 @@ export const demoSeed: MemorySeed = {
     },
     {
       id: D_FC_EU,
+      version: 1,
       firmaId: F_TITAN,
       tip: 'factura_cumparare',
       serie: 'FC',
@@ -566,6 +570,7 @@ export const demoSeed: MemorySeed = {
     // nu trebuie sa apara in niciun jurnal/ecran cand firma curenta e Titan.
     {
       id: D_NORD,
+      version: 1,
       firmaId: F_NORD,
       tip: 'factura_vanzare',
       serie: 'FCT',

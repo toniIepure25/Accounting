@@ -97,6 +97,12 @@ export const DocumentSchema = z.object({
   avansBani: z.number().int().default(0), // pentru comenzi
   /** camp liber JSON pentru extensii (ex. configuratie Mobila). */
   meta: z.string().default('{}'),
+  /**
+   * Contor de versiune pentru blocare optimista (Faza 4). Fiecare modificare
+   * autoritara prin comenzi il incrementeaza; o comanda cu `expectedVersion`
+   * invechit este respinsa (conflict) in loc sa suprascrie orbeste.
+   */
+  version: z.number().int().min(1).default(1),
 });
 export type Document = z.infer<typeof DocumentSchema>;
 

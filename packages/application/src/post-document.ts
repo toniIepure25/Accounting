@@ -15,13 +15,21 @@ import {
   validaPentruPostare,
 } from '@gr/core-domain';
 import { withExecutor } from '@gr/data';
+import { cuIdempotenta } from './idempotency.js';
 import { type DocumentCuLinii, incarcaDocumentCuLinii } from './load.js';
+import { asertaVersiune } from './locking.js';
 import { persistaSnapshotLinie, rezolvaSnapshotLinie } from './tax-snapshot.js';
 import { type CommandDeps, acum } from './types.js';
 
 export interface OptiuniPostare {
   /** Categorie fiscala per linie (keyed pe `linie.id`) pentru liniile fara produs. */
   categoriiFiscale?: Record<string, string>;
+  /** Blocare optimista: versiunea asteptata a documentului (Faza 4). */
+  expectedVersion?: number;
+  /** Cheie de idempotenta: o reincercare cu aceeasi cheie nu re-posteaza (Faza 4). */
+  idempotencyKey?: string;
+  /** Hash-ul cererii pentru cheia de idempotenta. Implicit `post-document:<id>`. */
+  requestHash?: string;
 }
 
 /**
@@ -37,53 +45,72 @@ export async function postDocument(
   // si la alocarea de numar, deci nu vrem doua postari concurente sa avanseze.
   return deps.exec.transaction({ sqliteMode: 'immediate' }, async (tx) => {
     const repos = withExecutor(tx);
-    const { document, linii } = await incarcaDocumentCuLinii(repos, id);
 
-    // 2. tranzitia de stare (arunca daca documentul e deja postat/anulat/stornat)
-    asertaTranzitie(document.stare, STARE_DOC.POSTAT);
+    const munca = async (): Promise<DocumentCuLinii> => {
+      const { document, linii } = await incarcaDocumentCuLinii(repos, id);
 
-    // 3. rezolva snapshot-ul fiscal si fixeaza cota autoritara pe fiecare linie
-    const snapshots = new Map<string, Awaited<ReturnType<typeof rezolvaSnapshotLinie>>>();
-    const liniiCuCota: DocumentLinie[] = [];
-    for (const l of linii) {
-      const s = await rezolvaSnapshotLinie(
-        tx,
-        repos,
-        document,
-        l,
-        optiuni.categoriiFiscale?.[l.id],
-        t,
-      );
-      snapshots.set(l.id, s);
-      liniiCuCota.push({ ...l, cotaTvaProcent: s.procent });
-    }
+      // 2a. blocare optimista: versiunea asteptata trebuie sa fie cea curenta
+      asertaVersiune(id, document.version, optiuni.expectedVersion);
+      // 2b. tranzitia de stare (arunca daca e deja postat/anulat/stornat)
+      asertaTranzitie(document.stare, STARE_DOC.POSTAT);
 
-    // 4. valideaza invariantele + recalculeaza totalurile server-side
-    const validat = validaPentruPostare(document, liniiCuCota);
+      // 3. rezolva snapshot-ul fiscal si fixeaza cota autoritara pe fiecare linie
+      const snapshots = new Map<string, Awaited<ReturnType<typeof rezolvaSnapshotLinie>>>();
+      const liniiCuCota: DocumentLinie[] = [];
+      for (const l of linii) {
+        const s = await rezolvaSnapshotLinie(
+          tx,
+          repos,
+          document,
+          l,
+          optiuni.categoriiFiscale?.[l.id],
+          t,
+        );
+        snapshots.set(l.id, s);
+        liniiCuCota.push({ ...l, cotaTvaProcent: s.procent });
+      }
 
-    // 5. aloca numarul legal la pasul autoritar (postare)
-    const an = new Date(document.data).getFullYear();
-    const alocat = await repos.numerotare.next(document.tip, an, document.serie ?? '', 6);
+      // 4. valideaza invariantele + recalculeaza totalurile server-side
+      const validat = validaPentruPostare(document, liniiCuCota);
 
-    // 6. scrie documentul + liniile + snapshot-ul fiscal, atomic
-    const docPostat: Document = {
-      ...validat.document,
-      stare: STARE_DOC.POSTAT,
-      numar: alocat.numar,
-      cod: alocat.cod,
+      // 5. aloca numarul legal la pasul autoritar (postare)
+      const an = new Date(document.data).getFullYear();
+      const alocat = await repos.numerotare.next(document.tip, an, document.serie ?? '', 6);
+
+      // 6. scrie documentul + liniile + snapshot-ul fiscal, atomic
+      const docPostat: Document = {
+        ...validat.document,
+        stare: STARE_DOC.POSTAT,
+        numar: alocat.numar,
+        cod: alocat.cod,
+        version: document.version + 1,
+      };
+      await repos.documente.update(id, docPostat);
+
+      for (const l of validat.linii) {
+        await repos.documenteLinii.update(l.id, {
+          cotaTvaProcent: l.cotaTvaProcent,
+          netBani: l.netBani,
+          tvaBani: l.tvaBani,
+          brutBani: l.brutBani,
+        });
+        await persistaSnapshotLinie(tx, l.id, snapshots.get(l.id)!);
+      }
+
+      return incarcaDocumentCuLinii(repos, id);
     };
-    await repos.documente.update(id, docPostat);
 
-    for (const l of validat.linii) {
-      await repos.documenteLinii.update(l.id, {
-        cotaTvaProcent: l.cotaTvaProcent,
-        netBani: l.netBani,
-        tvaBani: l.tvaBani,
-        brutBani: l.brutBani,
-      });
-      await persistaSnapshotLinie(tx, l.id, snapshots.get(l.id)!);
+    // Idempotenta: o reincercare cu aceeasi cheie intoarce raspunsul memorat,
+    // fara sa re-posteze sau sa aloce un al doilea numar.
+    if (optiuni.idempotencyKey) {
+      return cuIdempotenta(
+        tx,
+        optiuni.idempotencyKey,
+        optiuni.requestHash ?? `post-document:${id}`,
+        t,
+        munca,
+      );
     }
-
-    return incarcaDocumentCuLinii(repos, id);
+    return munca();
   });
 }
