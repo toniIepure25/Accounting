@@ -15,6 +15,7 @@ import {
 import { withExecutor } from '@gr/data';
 import { type DocumentCuLinii, DocumentInexistentError, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
+import { stornoStocDocument } from './stock.js';
 import { copiazaSnapshotLinie } from './tax-snapshot.js';
 import { type CommandDeps, type DocumentPayload, acum } from './types.js';
 
@@ -181,6 +182,10 @@ export async function reverseDocument(
       });
       await copiazaSnapshotLinie(tx, l.id, stornoLinieId);
     }
+
+    // Storneaza in registrul de stoc: intrari compensatorii (negate) pe documentul
+    // de stornare; soldurile revin la valoarea de dinainte de postare.
+    await stornoStocDocument(tx, id, stornoId, dataStorno, document.firmaId ?? null, t);
 
     return incarcaDocumentCuLinii(repos, stornoId);
   });

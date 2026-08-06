@@ -53,6 +53,13 @@ async function setup(): Promise<Fixture> {
   });
   const partener = await repos.parteneri.create({ tip: 'client', denumire: 'Client SRL' });
   const gestiune = await repos.gestiuni.create({ cod: 'G1', denumire: 'Gestiune 1' });
+  // Seed de stoc: aceste teste vizeaza TVA/ciclu de viata/blocare, nu stocul.
+  // Fara stoc, o vanzare ar fi respinsa de politica implicita `interzice` (Faza 5).
+  await exec.execute(
+    `INSERT INTO stock_balances (gestiune_id, produs_id, firma_id, cantitate, valoare_bani, pmp_bani, updated_at)
+     VALUES (?, ?, NULL, 100000, 100000000, 1000, ?)`,
+    [gestiune.id, p.id, NOW],
+  );
   return { exec, produsId: p.id, partenerId: partener.id, gestiuneId: gestiune.id };
 }
 

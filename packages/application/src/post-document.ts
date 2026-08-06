@@ -10,6 +10,7 @@
 import {
   type Document,
   type DocumentLinie,
+  type PoliticaStocNegativ,
   STARE_DOC,
   asertaTranzitie,
   validaPentruPostare,
@@ -18,6 +19,7 @@ import { withExecutor } from '@gr/data';
 import { cuIdempotenta } from './idempotency.js';
 import { type DocumentCuLinii, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
+import { emiteStocDocument } from './stock.js';
 import { persistaSnapshotLinie, rezolvaSnapshotLinie } from './tax-snapshot.js';
 import { type CommandDeps, acum } from './types.js';
 
@@ -30,6 +32,8 @@ export interface OptiuniPostare {
   idempotencyKey?: string;
   /** Hash-ul cererii pentru cheia de idempotenta. Implicit `post-document:<id>`. */
   requestHash?: string;
+  /** Politica de stoc negativ la iesire (Faza 5). Implicit `interzice`. */
+  politicaStocNegativ?: PoliticaStocNegativ;
 }
 
 /**
@@ -96,6 +100,16 @@ export async function postDocument(
         });
         await persistaSnapshotLinie(tx, l.id, snapshots.get(l.id)!);
       }
+
+      // 7. emite miscarile in registrul de stoc, in ACEEASI tranzactie. O iesire
+      // sub zero (politica implicita `interzice`) arunca => rollback total.
+      await emiteStocDocument(
+        tx,
+        docPostat,
+        validat.linii,
+        optiuni.politicaStocNegativ ?? 'interzice',
+        t,
+      );
 
       return incarcaDocumentCuLinii(repos, id);
     };
