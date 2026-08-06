@@ -7,14 +7,19 @@
  * D390) citesc apoi FAPTE, nu re-deduc din documente.
  */
 
-import { genereazaEvenimenteFiscaleDocument } from '@gr/core-domain';
+import {
+  type DecontDinEvenimente,
+  decontDinEvenimente,
+  genereazaEvenimenteFiscaleDocument,
+} from '@gr/core-domain';
 import {
   type SqlExecutor,
+  listeazaEvenimenteFiscale,
   listeazaEvenimenteFiscaleDocument,
   scrieEvenimentFiscal,
   withExecutor,
 } from '@gr/data';
-import type { Document, DocumentLinie } from './types.js';
+import type { CommandDeps, Document, DocumentLinie } from './types.js';
 
 /** Contextul tranzactiei dedus din tara partenerului (simplificare onesta). */
 async function taraSiContext(
@@ -46,6 +51,23 @@ export async function emiteEvenimenteFiscaleDocument(
     context,
   });
   for (const e of evenimente) await scrieEvenimentFiscal(tx, e, doc.firmaId ?? null, acum);
+}
+
+/**
+ * Decont de TVA (baza D300) pe o perioada, SCOPAT PE FIRMA (Faza 10) — derivat
+ * din evenimentele fiscale persistate ale firmei. Fara dubla numarare (NIR) si
+ * fara scurgere intre firme (filtrarea pe `firmaId` e in query).
+ */
+export async function genereazaDecontDinRegistre(
+  deps: CommandDeps,
+  optiuni: { de?: string; pana?: string; firmaId?: string | null } = {},
+): Promise<DecontDinEvenimente> {
+  const evenimente = await listeazaEvenimenteFiscale(deps.exec, {
+    de: optiuni.de,
+    pana: optiuni.pana,
+    firmaId: optiuni.firmaId,
+  });
+  return decontDinEvenimente(evenimente);
 }
 
 /**

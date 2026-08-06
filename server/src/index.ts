@@ -441,9 +441,10 @@ async function main() {
         // patch (daca se schimba), ca sa nu poata fi ocolita schimband data.
         if (numeResursa === 'documente' && curent) {
           const dataNoua = patch?.data ?? curent.data;
+          const firmaDoc = (curent as { firmaId?: string | null }).firmaId ?? null;
           if (
-            (await perioadaBlocataPentru(provider, curent.data)) ||
-            (await perioadaBlocataPentru(provider, dataNoua))
+            (await perioadaBlocataPentru(provider, curent.data, firmaDoc)) ||
+            (await perioadaBlocataPentru(provider, dataNoua, firmaDoc))
           ) {
             return send(423, {
               error: 'perioada inchisa — documentul nu mai poate fi modificat',
@@ -476,7 +477,11 @@ async function main() {
         if (
           numeResursa === 'documente' &&
           curent &&
-          (await perioadaBlocataPentru(provider, curent.data))
+          (await perioadaBlocataPentru(
+            provider,
+            curent.data,
+            (curent as { firmaId?: string | null }).firmaId ?? null,
+          ))
         ) {
           return send(423, { error: 'perioada inchisa — documentul nu mai poate fi sters' });
         }

@@ -21,6 +21,7 @@ import { emiteEvenimenteFiscaleDocument } from './fiscal.js';
 import { cuIdempotenta } from './idempotency.js';
 import { type DocumentCuLinii, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
+import { asertaPerioadaDeschisa } from './perioada.js';
 import { emiteStocDocument } from './stock.js';
 import { persistaSnapshotLinie, rezolvaSnapshotLinie } from './tax-snapshot.js';
 import { type CommandDeps, acum } from './types.js';
@@ -57,7 +58,9 @@ export async function postDocument(
 
       // 2a. blocare optimista: versiunea asteptata trebuie sa fie cea curenta
       asertaVersiune(id, document.version, optiuni.expectedVersion);
-      // 2b. tranzitia de stare (arunca daca e deja postat/anulat/stornat)
+      // 2b. inchidere de perioada PER FIRMA: nu se posteaza intr-o perioada inchisa
+      await asertaPerioadaDeschisa(tx, document);
+      // 2c. tranzitia de stare (arunca daca e deja postat/anulat/stornat)
       asertaTranzitie(document.stare, STARE_DOC.POSTAT);
 
       // 3. rezolva snapshot-ul fiscal si fixeaza cota autoritara pe fiecare linie

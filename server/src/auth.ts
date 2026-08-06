@@ -198,14 +198,22 @@ export function poateAccesa(rol: Rol, permisiune: Permisiune | null): boolean {
 /**
  * Inchidere de perioada: un document cu data <= data-limita de blocare (vezi
  * Firma.perioadaBlocataPanaLa) nu mai poate fi validat/editat/sters de NICIUN
- * rol, inclusiv admin — controlul se ridica explicit din Setari, nu se
- * ocoleste din ecranul de documente. Multi-firma nu scopeaza inca datele per
- * firma, deci se foloseste cea mai recenta blocare dintre toate firmele.
+ * rol, inclusiv admin — controlul se ridica explicit din Setari.
+ *
+ * Faza 10: inchiderea e PER FIRMA. Cand se cunoaste firma documentului
+ * (`firmaId`), se foloseste blocajul acelei firme; inchiderea unei firme nu mai
+ * afecteaza alta. Doar cand firma e necunoscuta (documente vechi nescopate) se
+ * cade inapoi pe cea mai recenta blocare dintre firme (conservator).
  */
 export async function perioadaBlocataPentru(
   provider: DataProvider,
   dataDoc: string,
+  firmaId?: string | null,
 ): Promise<boolean> {
+  if (firmaId) {
+    const firma = await provider.firme.getById(firmaId);
+    return documentBlocat(dataDoc, firma?.perioadaBlocataPanaLa ?? null);
+  }
   const firme = await provider.firme.list();
   return documentBlocat(dataDoc, celMaiRecentBlocaj(firme));
 }

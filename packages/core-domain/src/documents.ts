@@ -82,6 +82,19 @@ export function documentBlocat(dataDoc: string, blocatPanaLa: string | null): bo
   return blocatPanaLa != null && dataDoc <= blocatPanaLa;
 }
 
+/**
+ * Inchidere de perioada PER FIRMA (Faza 10): un document e blocat daca data lui
+ * <= `perioadaBlocataPanaLa` a FIRMEI lui. Inlocuieste blocajul global
+ * (`celMaiRecentBlocaj`) — inchiderea unei firme nu mai afecteaza alta firma. Un
+ * document fara firma (`firma == null`) nu are inchidere specifica.
+ */
+export function documentBlocatPentruFirma(
+  dataDoc: string,
+  firma: { perioadaBlocataPanaLa: string | null } | null,
+): boolean {
+  return documentBlocat(dataDoc, firma?.perioadaBlocataPanaLa ?? null);
+}
+
 function mk(
   doc: Document,
   l: DocumentLinie,

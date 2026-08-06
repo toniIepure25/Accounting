@@ -17,6 +17,7 @@ import { stornoContabilitateDocument } from './accounting.js';
 import { stornoEvenimenteFiscaleDocument } from './fiscal.js';
 import { type DocumentCuLinii, DocumentInexistentError, incarcaDocumentCuLinii } from './load.js';
 import { asertaVersiune } from './locking.js';
+import { asertaPerioadaDeschisa } from './perioada.js';
 import { stornoStocDocument } from './stock.js';
 import { copiazaSnapshotLinie } from './tax-snapshot.js';
 import { type CommandDeps, type DocumentPayload, acum } from './types.js';
@@ -153,6 +154,12 @@ export async function reverseDocument(
 
     // 2. creeaza documentul de stornare (oglinda negata), el insusi POSTAT
     const dataStorno = optiuni.data ?? document.data;
+    // Inchidere de perioada PER FIRMA: nu se storneaza intr-o perioada inchisa.
+    await asertaPerioadaDeschisa(tx, {
+      cod: document.cod,
+      data: dataStorno,
+      firmaId: document.firmaId,
+    });
     const an = new Date(dataStorno).getFullYear();
     const alocat = await repos.numerotare.next(document.tip, an, document.serie ?? '', 6);
     const stornoId = crypto.randomUUID();
