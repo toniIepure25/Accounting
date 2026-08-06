@@ -22,7 +22,7 @@ specs where applicable. No claim without evidence.
 | 2 | Transaction-capable persistence | yes | IMPLEMENTED_NOT_POSTGRES_VERIFIED |
 | 3 | Application commands + document aggregate | yes | done (UI/transport wiring per mode remaining) |
 | 4 | Optimistic locking, numbering, idempotency | yes | done (real-PG concurrency race = CI only) |
-| 5 | Persistent immutable stock ledger | yes | todo |
+| 5 | Persistent immutable stock ledger | yes | done (UI report wiring remaining) |
 | 6 | Persistent immutable accounting ledger | yes | todo |
 | 7 | Fiscal event ledger + D300/D394/D390 | yes | todo |
 | 8 | e-Factura end-to-end (SPV workflow) | yes | todo |
@@ -90,10 +90,15 @@ specs where applicable. No claim without evidence.
 - Acceptance: zero duplicate numbers/postings under retries — verified on real
   SQLite. True multi-process race belongs to the PostgreSQL CI job.
 
-### P5 — Stock ledger
-- **P5-R1** `stock_posting_batches`, `stock_ledger_entries`, `stock_balances` (+ cost layers if needed).
-- **P5-R2** CMP valuation; transfer value conservation; negative-stock policy (DENY/WARN/ALLOW), never clamp.
-- Acceptance: reports derive from ledger; concurrent overselling prevented; value reconciles.
+### P5 — Stock ledger — **done**
+- **P5-R1** `stock_ledger_entries` (append-only) + `stock_balances` (materialized) —
+  **done** (migration 0015; running qty/value/CMP persisted per entry).
+- **P5-R2** CMP valuation; transfer value conservation; negative-stock policy
+  (interzice/avertizeaza/permite), never clamp — **done** (pure engine
+  `stock-ledger.ts`; emitted atomically by `postDocument`; reversal nets to zero).
+- Acceptance: reports derive from the persisted ledger; concurrent overselling
+  denied by default; value reconciles on transfer. Remaining: wire the UI stock
+  report (`useStoc`) to the persisted balances instead of recomputing.
 
 ### P6 — Accounting ledger
 - **P6-R1** `journal_entries`/`journal_lines`, effective-dated posting profiles, dimensions, periods.

@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 271,
+      "total": 284,
       "skipped": 1,
-      "note": "post Phase 1+2+3+4; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-5; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 111,
+        "core-domain": 118,
         "data": 52,
-        "application": 23,
+        "application": 29,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 11,
@@ -456,6 +456,55 @@
         "true multi-process concurrency exercised on PostgreSQL only in CI (SQLite test is single-connection); real-PG numbering race not run in-env"
       ],
       "externalValidation": "CI postgres job"
+    },
+    {
+      "id": "P5-R1",
+      "phase": 5,
+      "title": "Persistent append-only stock ledger + materialized balances",
+      "status": "done",
+      "files": ["db/migrations/0015_stock_ledger.sql", "packages/data/src/stock-ledger-repo.ts"],
+      "migrations": ["0015_stock_ledger.sql"],
+      "tests": ["packages/application/src/stock.test.ts"],
+      "commitSha": "323878a",
+      "acceptanceEvidence": "stock_ledger_entries (append-only, running qty/value/CMP after each move) + stock_balances (materialized current balance) on real SQLite; reports derive from persisted balances/ledger.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P5-R2",
+      "phase": 5,
+      "title": "CMP valuation, transfer value conservation, explicit negative-stock policy (never clamp)",
+      "status": "done",
+      "files": ["packages/core-domain/src/stock-ledger.ts", "packages/application/src/stock.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/stock-ledger.test.ts",
+        "packages/application/src/stock.test.ts"
+      ],
+      "commitSha": "323878a",
+      "acceptanceEvidence": "Pure CMP engine: exits valued at weighted-average cost; transfer dest IN = source OUT (value conserved); negative-stock policy interzice(default)/avertizeaza/permite, never a silent clamp; StocInsuficientError. postDocument emits ledger + upserts balances in the SAME transaction (atomic — insufficient-stock rollback proven); reverseDocument nets the ledger to zero. Verified on real SQLite.",
+      "risks": [
+        "true multi-process oversell prevention (writer lock) meaningful on PostgreSQL/CI; SQLite test is single-connection but exercises the deny path + BEGIN IMMEDIATE"
+      ],
+      "externalValidation": "CI postgres job"
+    },
+    {
+      "id": "P5-STATUS",
+      "phase": 5,
+      "title": "Phase 5 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/stock-ledger.test.ts",
+        "packages/application/src/stock.test.ts"
+      ],
+      "commitSha": "323878a",
+      "acceptanceEvidence": "Stock is a persistent immutable ledger; reports derive from it; value reconciles on transfer; overselling denied by default. RK-03 downgraded (stock persisted; accounting ledger is Phase 6), RK-06 downgraded.",
+      "risks": [
+        "UI reports (useStoc) still recompute in some paths — wiring them to the persisted balances is follow-up integration"
+      ],
+      "externalValidation": "n/a"
     }
   ]
 }
