@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `3f108d4` before the doc commit (the doc commit is the tip).
+- HEAD SHA: `74b64d8` before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -17,63 +17,66 @@ planning or repeat earlier phases.
 - **Phase 3** commands & aggregate (`@gr/application`, `postDocument` + lifecycle +
   reversal, server immutability guard).
 - **Phase 4** optimistic locking, idempotency, unique numbering.
-- **Phase 5** persistent stock ledger (CMP, transfer conservation, never-clamp
-  negative policy) emitted atomically at posting.
-- **Phase 6 — persistent accounting journal** (done):
-  - Migration 0016: append-only `journal_entries` + `journal_lines` (double-entry).
-  - `packages/core-domain/src/journal.ts` — pure `genereazaNotaDocument` reusing
-    the `contabilitate.ts` monografie; every note balanced (Σdebit=Σcredit),
-    `asertaNotaEchilibrata`, `NotaDezechilibrataError`.
-  - `packages/data/src/journal-repo.ts` — write entry+lines, list.
-  - `packages/application/src/accounting.ts` — `emiteContabilitateDocument`
-    (called by `postDocument` in the SAME transaction as the document + stock;
-    uses the stock COGS for the inventory discharge; 3-way NIR match => no second
-    note) and `stornoContabilitateDocument` (reversal swaps debit/credit → nets to
-    zero). `emiteStocDocument` now returns `costIesireBani`.
-  - Tests: 7 pure + 6 real-SQLite (balanced, atomic, NIR-match, reversal nets to
-    zero, **stock↔accounting reconcile**).
+- **Phase 5** persistent stock ledger (CMP, transfer conservation, never-clamp).
+- **Phase 6** persistent double-entry accounting journal (balanced; reversal nets
+  to zero; stock↔accounting reconcile).
+- **Phase 7 — fiscal event ledger** (done):
+  - Migration 0017: append-only `fiscal_events` (direction/rate/base/VAT/partner/
+    country/context).
+  - `packages/core-domain/src/fiscal-events.ts` — pure
+    `genereazaEvenimenteFiscaleDocument` (direction by type, grouped by posted-line
+    rate; respects the shared 3-way NIR match) + `decontDinEvenimente` (D300 base).
+  - `packages/data/src/fiscal-events-repo.ts` — write / list by interval / by doc.
+  - `packages/application/src/fiscal.ts` — `emiteEvenimenteFiscaleDocument`
+    (called by `postDocument` atomically after the journal; `esteFacturaAcoperitaDeNir`
+    shared with the journal) + `stornoEvenimenteFiscaleDocument` (negates events).
+  - Tests: 7 pure + 5 real-SQLite (no NIR↔invoice double count, reconciles to
+    journal 4426/4427, interval filter, reversal nets to zero).
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **297 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 125, data 52, application 35, ui 22, license 22,
+- `npx turbo run test --force` → **309 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 132, data 52, application 40, ui 22, license 22,
   fiscal-ro 11, auth 10, sync 9, server 6, ai 5.
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
 - `npm run build:web` → OK (~372 kB).
-- **Not run in-env:** real PostgreSQL (CI), Tauri native build, Playwright e2e.
+- **Not run in-env:** real PostgreSQL (CI), Tauri native build, Playwright e2e,
+  official ANAF validators.
 
 ## What is intentionally NOT done yet (be honest)
 - **UI/transport wiring** (from Phase 3): UI still saves via the generic provider
   in some paths; the web-demo memory provider has no executor.
-- **UI reports** (`useStoc`, accounting pages) still recompute in some paths —
-  they should read the persisted `stock_balances` / `journal_lines`.
-- **Posting profile** is the fixed RO monografie (`contStoc` defaults 371);
-  effective-dated posting profiles + analytic dimensions + periods are a later
-  refinement.
-- **Fiscal declarations** (D300/D394/D390/SAF-T) still derive from documents —
-  that is Phase 7+ and needs external accountant/validator sign-off.
+- **UI reports** (`useStoc`, accounting/fiscal pages, `fiscal-ro` d394/d390) still
+  compute from documents — point them at the persisted stock/journal/fiscal-event
+  ledgers.
+- **Official declaration XML** (D300/D394/D390/SAF-T) and the ANAF validator are
+  external gates — the code computes correct bases/recaps but does not emit the
+  official filing format verified against the real validator.
+- Effective-dated posting profiles / analytic dimensions / periods are a later
+  refinement (current profile is the fixed RO monografie).
 
-## Next priority: Phase 7 — fiscal event ledger + D300/D394/D390
-1. **Fiscal event layer**: a persisted, per-document set of fiscal facts (taxable
-   base, VAT by rate/category, direction, partner VAT status, intra-community
-   flags) written at posting from the tax snapshot (P1-R5b) + journal — so
-   declarations read facts, not re-derive from document lists (fixes RK-07 fully).
-2. **D300** (VAT return), **D394** (domestic recap), **D390** (VIES/EC sales) built
-   from the fiscal event ledger; reconcile to the journal (4426/4427) and to the
-   partner/country data. `packages/fiscal-ro` already has `d394.ts`/`d390.ts`/
-   `decont.ts` computing from documents — persist the events and point these at
-   them.
-3. Validate structure against official schemas where possible (mark
-   EXTERNAL_REVIEW_REQUIRED where the real ANAF validator can't run in-env).
-- Acceptance: declarations derive from persisted fiscal events; no NIR↔invoice or
-  cross-document double-count; totals reconcile to the accounting journal.
+## Next priority: Phase 8 — e-Factura end-to-end (SPV workflow)
+1. **Durable SPV state machine** per invoice: draft-XML → validated → uploaded →
+   {accepted | rejected} → stored (with ANAF upload id, status, timestamps,
+   error messages), persisted — not the current generate/download-only path.
+2. Build the **e-Factura UBL/CIUS-RO XML** from the posted document + fiscal
+   snapshot (reuse `packages/fiscal-ro/efactura.ts`); validate structure; mark
+   EXTERNAL_REVIEW_REQUIRED where the official ANAF/SPV validator can't run in-env.
+3. Idempotent upload + poll (reuse the Phase 4 idempotency store); retries never
+   double-submit; store the SPV response atomically.
+4. B2C CNP handling and the mandatory-e-Factura thresholds already sketched in
+   `efactura.ts` — persist and enforce at posting.
+- Acceptance: an invoice has a durable, auditable SPV lifecycle; XML is
+  structurally valid; no double submission under retry. Real SPV round-trip is an
+  external gate (needs ANAF credentials/endpoint).
 
 ## Forbidden regressions
-- Keep: no-unsafe-VAT-default guard, posted-doc immutability, transaction
-  contract, optimistic locking, idempotency, stock atomicity + never-clamp,
-  balanced journal + reversal-nets-to-zero + stock↔accounting reconciliation.
+- Keep every prior guarantee: no-unsafe-VAT-default guard, posted-doc immutability,
+  transaction contract, optimistic locking, idempotency, stock atomicity +
+  never-clamp, balanced journal + reversal-nets-to-zero + stock↔accounting
+  reconcile, fiscal events (no double count + journal reconciliation).
 - Keep money in minor units; keep migrations passing on real SQLite.
-- Do not weaken Phase 3–6 tests to make new work pass.
+- Do not weaken Phase 3–7 tests to make new work pass.
 
 ## Environment gotchas
 - Windows: kill stray servers with `Get-NetTCPConnection -LocalPort <p> | Stop-Process`.
@@ -84,12 +87,12 @@ planning or repeat earlier phases.
   post a receipt first or seed a `stock_balances` row.
 
 ## Continuation prompt (paste to resume)
-> Resume the Accounting productization program. HEAD `3f108d4` (+ doc commit).
-> Phases 0–6 done (Phase 2 IMPLEMENTED_NOT_POSTGRES_VERIFIED; UI/transport + UI
-> report wiring still pending). Begin Phase 7: a persisted fiscal-event ledger
-> written at posting from the tax snapshot + journal, and D300/D394/D390 built
-> from those events (not re-derived from document lists), reconciling to the
-> accounting journal (4426/4427) — fully fixing NIR↔invoice double-count (RK-07).
-> Point the existing fiscal-ro computations at the persisted events. Mark
-> EXTERNAL_REVIEW_REQUIRED where the official ANAF validator can't run in-env.
-> Update the ledger + handoff. No claim without evidence.
+> Resume the Accounting productization program. HEAD `74b64d8` (+ doc commit).
+> Phases 0–7 done (Phase 2 IMPLEMENTED_NOT_POSTGRES_VERIFIED; UI/transport + UI
+> report + official-XML wiring still pending). Begin Phase 8: a durable, persisted
+> e-Factura SPV state machine per invoice (draft-XML → validated → uploaded →
+> accepted|rejected, with ANAF upload id/status/errors), building the CIUS-RO XML
+> from the posted document + fiscal snapshot, idempotent upload/poll (reuse the
+> Phase 4 idempotency store) so retries never double-submit, all persisted
+> atomically. Mark EXTERNAL_REVIEW_REQUIRED where the official ANAF/SPV validator
+> can't run in-env. Update the ledger + handoff. No claim without evidence.

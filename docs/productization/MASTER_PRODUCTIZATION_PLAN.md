@@ -24,7 +24,7 @@ specs where applicable. No claim without evidence.
 | 4 | Optimistic locking, numbering, idempotency | yes | done (real-PG concurrency race = CI only) |
 | 5 | Persistent immutable stock ledger | yes | done (UI report wiring remaining) |
 | 6 | Persistent immutable accounting ledger | yes | done (effective posting profiles = later refinement) |
-| 7 | Fiscal event ledger + D300/D394/D390 | yes | todo |
+| 7 | Fiscal event ledger + D300/D394/D390 | yes | done (D300 base from events; D394/D390 XML = external gate) |
 | 8 | e-Factura end-to-end (SPV workflow) | yes | todo |
 | 9 | SAF-T / D406 canonical | yes | todo |
 | 10 | Multi-company correctness + period closing | yes | todo |
@@ -112,12 +112,22 @@ specs where applicable. No claim without evidence.
   stock↔accounting reconcile (account 371 == persisted stock value) — verified on
   real SQLite. External accountant sign-off is a commercial-readiness gate.
 
-### P7–P20
+### P7 — Fiscal event ledger + declarations — **done**
+- **P7-R1** Persistent append-only `fiscal_events` (direction/rate/base/VAT/partner/
+  country/context) written at posting — **done** (migration 0017).
+- **P7-R2** VAT return (D300 base) derives from events, not document lists;
+  no NIR↔invoice double-count; reconciles to the journal (4426/4427); reversal
+  nets to zero — **done** (`fiscal-events.ts` + `decontDinEvenimente`).
+- Acceptance: declarations read persisted fiscal facts; deductible VAT counted once
+  across NIR+invoice; totals reconcile to accounting — verified on real SQLite.
+  Official D394/D390 XML + ANAF validator sign-off is an external commercial gate.
+
+### P8–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (fiscal event layer, e-Factura SPV workflow, SAF-T canonical,
-multi-company, auth freshness, sync redesign, query/perf, furniture depth, UX,
-backup/DR, CI/CD, licensing, legacy migration, docs/legal). IDs assigned when work
-starts, to avoid speculative churn.
+the program spec (e-Factura SPV workflow, SAF-T canonical, multi-company, auth
+freshness, sync redesign, query/perf, furniture depth, UX, backup/DR, CI/CD,
+licensing, legacy migration, docs/legal). IDs assigned when work starts, to avoid
+speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal

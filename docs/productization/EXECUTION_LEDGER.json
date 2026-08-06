@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 297,
+      "total": 309,
       "skipped": 1,
-      "note": "post Phase 1-6; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-7; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 125,
+        "core-domain": 132,
         "data": 52,
-        "application": 35,
+        "application": 40,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 11,
@@ -554,6 +554,55 @@
         "fiscal reports (D300/D394/D390) still derive from documents — Phase 7; external accountant sign-off required for compliance"
       ],
       "externalValidation": "n/a"
+    },
+    {
+      "id": "P7-R1",
+      "phase": 7,
+      "title": "Persistent append-only fiscal-event ledger",
+      "status": "done",
+      "files": ["db/migrations/0017_fiscal_events.sql", "packages/data/src/fiscal-events-repo.ts"],
+      "migrations": ["0017_fiscal_events.sql"],
+      "tests": ["packages/application/src/fiscal.test.ts"],
+      "commitSha": "74b64d8",
+      "acceptanceEvidence": "fiscal_events (append-only: direction, rate, base, VAT, partner, country, context) written at posting on real SQLite; declarations read facts, not document lists.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P7-R2",
+      "phase": 7,
+      "title": "D300 base from events; no NIR<->invoice double-count; reconcile to journal; reversal nets to zero",
+      "status": "done",
+      "files": ["packages/core-domain/src/fiscal-events.ts", "packages/application/src/fiscal.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/fiscal-events.test.ts",
+        "packages/application/src/fiscal.test.ts"
+      ],
+      "commitSha": "74b64d8",
+      "acceptanceEvidence": "genereazaEvenimenteFiscaleDocument (direction by type, grouped by posted-line rate) respects the shared 3-way NIR match; decontDinEvenimente computes the VAT return from events; postDocument emits events atomically; reverseDocument negates them. Verified on real SQLite: deductible VAT counted once across NIR+invoice; events reconcile to journal 4426/4427; reversal nets the decont to zero.",
+      "risks": [
+        "D394/D390 recap forms still read the document-based fiscal-ro helpers; pointing them fully at the event ledger + official ANAF XML/validator is remaining (EXTERNAL_REVIEW_REQUIRED)"
+      ],
+      "externalValidation": "official ANAF D300/D394/D390 validators (cannot run in-env)"
+    },
+    {
+      "id": "P7-STATUS",
+      "phase": 7,
+      "title": "Phase 7 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/fiscal-events.test.ts",
+        "packages/application/src/fiscal.test.ts"
+      ],
+      "commitSha": "74b64d8",
+      "acceptanceEvidence": "Fiscal facts are a persistent ledger written atomically at posting; the VAT return derives from events (not document lists), reconciles to the accounting journal, and reversal nets to zero. RK-07 closed at the source (double-count eliminated).",
+      "risks": [
+        "official declaration XML + ANAF validator sign-off is a commercial-readiness gate (external, out of code scope)"
+      ],
+      "externalValidation": "external accountant + ANAF validators"
     }
   ]
 }
