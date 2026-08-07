@@ -31,7 +31,7 @@ specs where applicable. No claim without evidence.
 | 11 | Auth freshness + security hardening | yes | done (fresh role + session version; Redis/pen-test = external) |
 | 12 | Sync/offline redesign (no LWW for posted data) | yes | done (safe reconcile + idempotent replay; client wiring remaining) |
 | 13 | Query model + performance | yes | done (keyset document query + indexes; migrate remaining callers) |
-| 14 | Furniture manufacturing differentiation | no (post-integrity) | todo |
+| 14 | Furniture manufacturing differentiation | no (post-integrity) | done (production lifecycle + BOM consumption; UI wiring remaining) |
 | 15 | UX / role-based usability | no | todo |
 | 16 | Backup, restore, migrations, DR | yes | todo |
 | 17 | CI/CD + release engineering | yes | todo |
@@ -182,12 +182,19 @@ specs where applicable. No claim without evidence.
   `list()`. Remaining (incremental): migrate the other `list()`-based callers and
   add paginated ledger queries.
 
-### P14–P20
+### P14 — Furniture manufacturing differentiation (Mobila) — **done**
+- **P14-R1** Production lifecycle state machine (oferta→…→facturata) — **done**.
+- **P14-R2** BOM-driven atomic material consumption: `pornesteProductie` posts a
+  `bon_consum` via `postDocument` (stock discharge at CMP + 601 journal + fiscal),
+  with production state persisted apart from the immutable order — **done**.
+- Acceptance: a furniture order drives real, atomic material consumption + costing
+  through the existing engine. Remaining: UI for the configurator/production board.
+
+### P15–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (furniture manufacturing differentiation, UX/role-based usability,
-backup/restore/DR, CI/CD + release engineering, licensing + customer admin, legacy
-migration, docs/support/legal). IDs assigned when work starts, to avoid speculative
-churn.
+the program spec (UX/role-based usability, backup/restore/DR, CI/CD + release
+engineering, licensing + customer admin, legacy migration, docs/support/legal).
+IDs assigned when work starts, to avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal

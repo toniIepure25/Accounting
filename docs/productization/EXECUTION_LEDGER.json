@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 349,
+      "total": 355,
       "skipped": 1,
-      "note": "post Phase 1-13; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-14; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
-        "core-domain": 136,
+        "core-domain": 138,
         "data": 57,
-        "application": 53,
+        "application": 57,
         "license": 22,
         "ui": 22,
         "sync": 17,
@@ -874,6 +874,55 @@
       "risks": [
         "migrating every list()-based caller + adding paginated ledger queries is incremental follow-up"
       ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P14-R1",
+      "phase": 14,
+      "title": "Furniture production lifecycle (pure state machine)",
+      "status": "done",
+      "files": ["packages/core-domain/src/mobila.ts"],
+      "migrations": [],
+      "tests": ["packages/core-domain/src/mobila.test.ts"],
+      "commitSha": "4dcc2d4",
+      "acceptanceEvidence": "StareProductie state machine oferta->confirmata->in_productie->finalizata->livrata->facturata; tranzitieProductiePermisa / asertaTranzitieProductie. 2 unit tests. (Non-launch-blocking vertical.)",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P14-R2",
+      "phase": 14,
+      "title": "BOM-driven atomic material consumption + persisted production tracking",
+      "status": "done",
+      "files": [
+        "db/migrations/0021_productie_mobila.sql",
+        "packages/data/src/productie-mobila-repo.ts",
+        "packages/application/src/productie.ts"
+      ],
+      "migrations": ["0021_productie_mobila.sql"],
+      "tests": ["packages/application/src/productie.test.ts"],
+      "commitSha": "4dcc2d4",
+      "acceptanceEvidence": "productie_mobila persists the operational production state separate from the immutable posted comanda. pornesteProductie computes the material need from the configurator BOM (necesarConsumStoc) and POSTS a bon_consum via postDocument, so stock discharge (CMP) + the 601 consumption journal + fiscal fire through the authoritative engine (missing material stops the start under the default interzice policy). Verified on real SQLite: stock discharged, 601 note equals the material cost, production row links the bon_consum; illegal transitions rejected.",
+      "risks": [
+        "production start + productie-record update are sequential (not one transaction); postDocument itself is atomic, and the record update is a small recoverable follow-up",
+        "UI for the production board / configurator is not wired to these commands yet"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P14-STATUS",
+      "phase": 14,
+      "title": "Phase 14 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": [
+        "packages/core-domain/src/mobila.test.ts",
+        "packages/application/src/productie.test.ts"
+      ],
+      "commitSha": "4dcc2d4",
+      "acceptanceEvidence": "The furniture vertical drives real, atomic material consumption + costing through the existing posting engine; production state is an explicit lifecycle persisted apart from the immutable order.",
+      "risks": ["non-launch-blocking; UI wiring for the configurator/production board remaining"],
       "externalValidation": "n/a"
     }
   ]
