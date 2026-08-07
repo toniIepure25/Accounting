@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `4dcc2d4` before the doc commit (the doc commit is the tip).
+- HEAD SHA: `76cc9e4` before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -30,12 +30,18 @@ planning or repeat earlier phases.
   lifecycle state machine + `pornesteProductie` posts a BOM-driven `bon_consum` via
   `postDocument` (stock/journal/fiscal atomic); `productie_mobila` persists the
   operational state apart from the immutable order (migration 0021). 6 tests.
+- **UI/transport wiring, slice 1 (WIRING-1)**: the demo server now runs on a real
+  better-sqlite3 executor with migrations + seed (was a memory stub), so the full
+  engine runs without PostgreSQL; `POST /commands/<post|reverse|approve|cancel>-document`
+  dispatch to `@gr/application` over the server executor (RBAC + stable HTTP error
+  mapping). Closes part of the Phase 3 "UI sends commands" gap at the transport
+  layer. 6 server tests on better-sqlite. See `server/src/commands.ts`, `db.ts`.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **355 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 57, application 57, ui 22, license 22,
-  sync 17, fiscal-ro 14, server 12, auth 11, ai 5.
+- `npx turbo run test --force` → **361 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 57, application 57, server 18, ui 22,
+  license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
 - `npm run build:web` → OK (~372 kB).
 - **Not run in-env:** real PostgreSQL (CI), Tauri native build, Playwright e2e,

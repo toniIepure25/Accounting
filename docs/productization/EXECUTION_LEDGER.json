@@ -11,18 +11,18 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 355,
+      "total": 361,
       "skipped": 1,
-      "note": "post Phase 1-14; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-14 + server command-endpoint wiring; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 138,
         "data": 57,
         "application": 57,
+        "server": 18,
         "license": 22,
         "ui": 22,
         "sync": 17,
         "fiscal-ro": 14,
-        "server": 12,
         "auth": 11,
         "ai": 5
       }
@@ -923,6 +923,22 @@
       "commitSha": "4dcc2d4",
       "acceptanceEvidence": "The furniture vertical drives real, atomic material consumption + costing through the existing posting engine; production state is an explicit lifecycle persisted apart from the immutable order.",
       "risks": ["non-launch-blocking; UI wiring for the configurator/production board remaining"],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "WIRING-1",
+      "phase": 15,
+      "title": "UI/transport wiring: authoritative command endpoints on a real SQLite engine",
+      "status": "done",
+      "files": ["server/src/db.ts", "server/src/commands.ts", "server/src/index.ts"],
+      "migrations": [],
+      "tests": ["server/src/commands.test.ts"],
+      "commitSha": "76cc9e4",
+      "acceptanceEvidence": "Closes part of the Phase 3 'UI sends commands' acceptance at the transport layer: the demo server now runs on a real better-sqlite3 executor with migrations + seed (was a memory stub), so the full stock/journal/fiscal engine runs without PostgreSQL; POST /commands/<post|reverse|approve|cancel>-document dispatch to @gr/application over the server executor with RBAC + stable HTTP error mapping. Verified on real SQLite (post over the command path fires the journal; 400/404/409 paths).",
+      "risks": [
+        "the React UI still saves posted docs via generic CRUD in the web-demo (memory) path; wiring DocumentEditor to call /commands (network mode) and adding a browser SQLite for local mode is the remaining UI-side work",
+        "reports/panels (useStoc, accounting/fiscal/SAF-T, e-Factura, production board) not yet pointed at the persisted ledgers/commands"
+      ],
       "externalValidation": "n/a"
     }
   ]
