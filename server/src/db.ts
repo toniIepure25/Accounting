@@ -4,11 +4,13 @@ import { fileURLToPath } from 'node:url';
 import {
   type DataProvider,
   type Migration,
-  createMemoryProvider,
+  type SqlExecutor,
   createSqlProvider,
   demoSeed,
   migrate,
 } from '@gr/data';
+import { fromBetterSqlite } from '@gr/data/node-sqlite';
+import Database from 'better-sqlite3';
 import { log } from './log.js';
 import { createPgExecutor } from './pg-executor.js';
 
@@ -27,10 +29,42 @@ function incarcaMigratii(): Migration[] {
 
 export interface ServerDb {
   provider: DataProvider;
-  /** true = PostgreSQL (persistent); false = memorie (demo, se pierde la restart). */
+  /**
+   * Executorul SQL — DETINE tranzactiile, deci comenzile autoritare (postare/
+   * stornare, @gr/application) trec prin el. Real in ambele moduri (PostgreSQL sau
+   * SQLite in-memory demo), ca API-ul de comenzi sa functioneze si fara PG.
+   */
+  exec: SqlExecutor;
+  /** true = PostgreSQL (persistent); false = SQLite in-memory (demo, se pierde la restart). */
   persistent: boolean;
   /** Verificare de sanatate a conexiunii, pentru /ready. */
   verificaConexiune: () => Promise<boolean>;
+}
+
+/**
+ * Insereaza datele demo intr-un provider SQL (FK dezactivate temporar, ca ordinea
+ * intre tabele sa nu conteze). Randurile care nu trec validarea de schema (ex.
+ * date demo legacy cu id ne-uuid pe plan_conturi — provider-ul in-memory nu le
+ * valida la seed, cel SQL da) se SAR peste, cu un avertisment — un seed de demo
+ * imperfect nu trebuie sa impiedice pornirea serverului.
+ */
+async function seedSql(exec: SqlExecutor, provider: DataProvider): Promise<void> {
+  await exec.execute('PRAGMA foreign_keys = OFF');
+  let sarite = 0;
+  for (const [key, randuri] of Object.entries(demoSeed)) {
+    // biome-ignore lint/suspicious/noExplicitAny: acces dinamic la repo-uri
+    const repo = (provider as any)[key];
+    if (!repo?.create || !Array.isArray(randuri)) continue;
+    for (const r of randuri) {
+      try {
+        await repo.create(r);
+      } catch {
+        sarite++;
+      }
+    }
+  }
+  await exec.execute('PRAGMA foreign_keys = ON');
+  if (sarite > 0) log.warn('seed demo: randuri sarite (validare esuata)', { sarite });
 }
 
 /**
@@ -49,14 +83,15 @@ export async function creeazaServerDb(): Promise<ServerDb> {
 
   if (!databaseUrl) {
     log.warn(
-      'DATABASE_URL nesetat — pornesc cu provider in-memory (date demo, NEPERSISTENTE). ' +
-        'Pentru PostgreSQL real, seteaza DATABASE_URL (vezi docker-compose.yml).',
+      'DATABASE_URL nesetat — pornesc cu SQLite in-memory (date demo, NEPERSISTENTE). ' +
+        'Ruleaza motorul real (stoc/jurnal/fiscal) prin comenzi; pentru PostgreSQL ' +
+        'persistent, seteaza DATABASE_URL (vezi docker-compose.yml).',
     );
-    return {
-      provider: createMemoryProvider(demoSeed),
-      persistent: false,
-      verificaConexiune: async () => true,
-    };
+    const exec = fromBetterSqlite(new Database(':memory:'));
+    await migrate(exec, incarcaMigratii());
+    const provider = createSqlProvider(exec);
+    await seedSql(exec, provider);
+    return { provider, exec, persistent: false, verificaConexiune: async () => true };
   }
 
   const { Pool } = await import('pg');
@@ -70,6 +105,7 @@ export async function creeazaServerDb(): Promise<ServerDb> {
 
   return {
     provider: createSqlProvider(exec),
+    exec,
     persistent: true,
     verificaConexiune: async () => {
       try {

@@ -12,6 +12,7 @@ import {
   revocaToken,
   verificaCerere,
 } from './auth.js';
+import { COMENZI, type NumeComanda, ruleazaComanda } from './commands.js';
 import { creeazaServerDb } from './db.js';
 import { incarcaLicenta, maiIncapeUtilizatorActiv } from './licenta.js';
 import { idCerere, log } from './log.js';
@@ -29,7 +30,7 @@ const COMMIT = process.env.GIT_COMMIT ?? process.env.GITHUB_SHA ?? 'necunoscut';
  * provider in-memory cu date demo (pornire instant, pentru probe).
  */
 async function main() {
-  const { provider, persistent, verificaConexiune } = await creeazaServerDb();
+  const { provider, exec, persistent, verificaConexiune } = await creeazaServerDb();
   await incarcaLicenta();
 
   /** Lungime minima de parola impusa server-side (nu doar in formularul din UI). */
@@ -221,6 +222,28 @@ async function main() {
       // (client) pur decorativ pentru un server expus in retea.
       const sesiune = await verificaCerere(req, provider);
       if (!sesiune) return send(401, { error: 'autentificare necesara' });
+
+      // Comenzi autoritare: POST /commands/<nume>. Postarea/stornarea sunt
+      // evenimente de business (stoc + jurnal + fiscal atomic prin @gr/application),
+      // nu PATCH-uri de stare — UI-ul le trimite ca sa nu ocoleasca motorul.
+      if (resource === 'commands' && id) {
+        if (req.method !== 'POST') return send(405, { error: 'metoda nepermisa' });
+        if (!COMENZI.includes(id as NumeComanda)) {
+          return send(404, { error: `comanda necunoscuta: ${id}` });
+        }
+        // Postarea/stornarea = validare de document; aprobarea/anularea = creare.
+        const permisiune =
+          id === 'approve-document' || id === 'cancel-document'
+            ? 'documente.creare'
+            : 'documente.validare';
+        if (!poateAccesa(sesiune.rol, permisiune)) {
+          return send(403, { error: 'acces interzis' });
+        }
+        // biome-ignore lint/suspicious/noExplicitAny: corp JSON al comenzii
+        const body = (await readBody(req)) as any;
+        const rez = await ruleazaComanda(exec, id, body ?? {}, sesiune.nume);
+        return send(rez.status, rez.body);
+      }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu
       // trebuie sa permita preluarea definitiva a contului) si revoca tokenul
