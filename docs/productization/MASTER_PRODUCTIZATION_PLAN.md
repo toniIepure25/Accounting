@@ -30,7 +30,7 @@ specs where applicable. No claim without evidence.
 | 10 | Multi-company correctness + period closing | yes | done (per-firm close + scoped reports; null-firma backfill remaining) |
 | 11 | Auth freshness + security hardening | yes | done (fresh role + session version; Redis/pen-test = external) |
 | 12 | Sync/offline redesign (no LWW for posted data) | yes | done (safe reconcile + idempotent replay; client wiring remaining) |
-| 13 | Query model + performance | yes | todo |
+| 13 | Query model + performance | yes | done (keyset document query + indexes; migrate remaining callers) |
 | 14 | Furniture manufacturing differentiation | no (post-integrity) | todo |
 | 15 | UX / role-based usability | no | todo |
 | 16 | Backup, restore, migrations, DR | yes | todo |
@@ -174,11 +174,20 @@ specs where applicable. No claim without evidence.
   idempotent. Remaining: wire the safe reconciliation + offline queue into the
   client transport.
 
-### P13–P20
+### P13 — Query model + performance — **done**
+- **P13-R1** Query DTOs + keyset pagination — **done**: `interogheazaDocumente`
+  (parameterized filter + keyset pagination, bounded LIMIT) over composite indexes
+  (migration 0020), replacing `list()` + in-memory filter on the primary hot path.
+- Acceptance: bounded, indexed, keyset-paginated reads instead of full-table
+  `list()`. Remaining (incremental): migrate the other `list()`-based callers and
+  add paginated ledger queries.
+
+### P14–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (query model + performance, furniture manufacturing depth, UX,
-backup/DR, CI/CD, licensing, legacy migration, docs/legal). IDs assigned when work
-starts, to avoid speculative churn.
+the program spec (furniture manufacturing differentiation, UX/role-based usability,
+backup/restore/DR, CI/CD + release engineering, licensing + customer admin, legacy
+migration, docs/support/legal). IDs assigned when work starts, to avoid speculative
+churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal

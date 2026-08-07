@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 344,
+      "total": 349,
       "skipped": 1,
-      "note": "post Phase 1-12; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-13; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 136,
-        "data": 52,
+        "data": 57,
         "application": 53,
         "license": 22,
         "ui": 22,
@@ -840,6 +840,39 @@
       "acceptanceEvidence": "Posted/ledger data is protected from last-write-wins (conflicts rejected, not merged); offline replay is command-based and idempotent. RK-12 downgraded.",
       "risks": [
         "wiring the offline queue + safe reconciliation into the client transport is remaining integration"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P13-R1",
+      "phase": 13,
+      "title": "Keyset-paginated, indexed document query (query model)",
+      "status": "done",
+      "files": [
+        "packages/data/src/document-query.ts",
+        "db/migrations/0020_index_documente_query.sql"
+      ],
+      "migrations": ["0020_index_documente_query.sql"],
+      "tests": ["packages/data/src/document-query.test.ts"],
+      "commitSha": "eb0f76f",
+      "acceptanceEvidence": "interogheazaDocumente replaces list()+in-memory filter with parameterized SQL: filter by firma/tip/stare/partener/date + keyset pagination (order by data,id desc; strict cursor; bounded LIMIT 1..500; next-cursor). Composite indexes (firma_id,data,id) and (tip,data,id) cover filter + sort. Verified on real SQLite: bounded page + stable cursor, full pagination with no overlap/gaps, firma isolation, tip+date filter, page clamp.",
+      "risks": [
+        "the hot read paths in the UI/API still call list() in places — migrating each caller to the query is incremental follow-up"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P13-STATUS",
+      "phase": 13,
+      "title": "Phase 13 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": ["packages/data/src/document-query.test.ts"],
+      "commitSha": "eb0f76f",
+      "acceptanceEvidence": "A bounded, indexed, keyset-paginated document query exists and is verified; the pattern generalizes to the other ledger read paths. RK-13 downgraded.",
+      "risks": [
+        "migrating every list()-based caller + adding paginated ledger queries is incremental follow-up"
       ],
       "externalValidation": "n/a"
     }
