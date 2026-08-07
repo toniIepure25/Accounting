@@ -3,6 +3,7 @@ export * from './tx-errors.js';
 export * from './repository.js';
 export * from './migrate.js';
 export * from './generic-sql-repo.js';
+export * from './document-query.js';
 export * from './api-repo.js';
 export * from './numerotare.js';
 export * from './api-numerotare.js';
