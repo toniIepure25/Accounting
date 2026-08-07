@@ -28,7 +28,7 @@ specs where applicable. No claim without evidence.
 | 8 | e-Factura end-to-end (SPV workflow) | yes | done (durable+idempotent; real SPV/validator = external gate) |
 | 9 | SAF-T / D406 canonical | yes | done (GL from journal, reconciles; ANAF validator = external gate) |
 | 10 | Multi-company correctness + period closing | yes | done (per-firm close + scoped reports; null-firma backfill remaining) |
-| 11 | Auth freshness + security hardening | yes | todo |
+| 11 | Auth freshness + security hardening | yes | done (fresh role + session version; Redis/pen-test = external) |
 | 12 | Sync/offline redesign (no LWW for posted data) | yes | todo |
 | 13 | Query model + performance | yes | todo |
 | 14 | Furniture manufacturing differentiation | no (post-integrity) | todo |
@@ -152,11 +152,22 @@ specs where applicable. No claim without evidence.
   reports never include another firm's posted data. Remaining: a backfill/scope
   migration for legacy `firma_id IS NULL` rows (still globally visible).
 
-### P11–P20
+### P11 — Auth freshness + security hardening — **done**
+- **P11-R1** Session freshness — **done**: role/firma read fresh from the DB user
+  each request + `session_version` in the token; deactivation/role change take
+  effect on the next request (`sesiuneProaspata`).
+- **P11-R2** Force logout everywhere on password change — **done**
+  (`invalideazaSesiuni` bumps `session_version`); per-request RBAC/immutability/
+  period-close/firma guards remain server-enforced.
+- Acceptance: stale role/company can't act after a revocation; no generic-CRUD
+  bypass of the authoritative guards. Remaining: shared revocation store for
+  multi-instance (Redis) + independent pen-test (external gates).
+
+### P12–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (auth freshness + security hardening, sync redesign, query/perf,
-furniture depth, UX, backup/DR, CI/CD, licensing, legacy migration, docs/legal).
-IDs assigned when work starts, to avoid speculative churn.
+the program spec (sync/offline redesign, query/perf, furniture depth, UX,
+backup/DR, CI/CD, licensing, legacy migration, docs/legal). IDs assigned when work
+starts, to avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal

@@ -11,9 +11,9 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 329,
+      "total": 336,
       "skipped": 1,
-      "note": "post Phase 1-10; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-11; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 136,
         "data": 52,
@@ -21,9 +21,9 @@
         "license": 22,
         "ui": 22,
         "fiscal-ro": 14,
-        "auth": 10,
+        "server": 12,
+        "auth": 11,
         "sync": 9,
-        "server": 6,
         "ai": 5
       }
     },
@@ -751,6 +751,54 @@
         "legacy null-firma rows are still globally visible until a scope-migration/backfill"
       ],
       "externalValidation": "n/a"
+    },
+    {
+      "id": "P11-R1",
+      "phase": 11,
+      "title": "Session freshness — fresh role/firma + session version",
+      "status": "done",
+      "files": [
+        "db/migrations/0019_utilizatori_session_version.sql",
+        "packages/core-domain/src/entities/utilizator.ts",
+        "packages/auth/src/session.ts",
+        "server/src/auth.ts"
+      ],
+      "migrations": ["0019_utilizatori_session_version.sql"],
+      "tests": ["packages/auth/src/auth.test.ts", "server/src/auth-freshness.test.ts"],
+      "commitSha": "f931d44",
+      "acceptanceEvidence": "session token carries sessionVersion; sesiuneProaspata (pure) rejects a deactivated user or stale session version and returns role/firma read fresh from the DB user (not the stale token). verificaCerere uses it, so a role/company change takes effect on the next request rather than at token expiry (up to 12h). 6 server unit tests + auth round-trip.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P11-R2",
+      "phase": 11,
+      "title": "Force logout everywhere on password change; hardening",
+      "status": "done",
+      "files": ["server/src/auth.ts", "server/src/index.ts"],
+      "migrations": [],
+      "tests": ["server/src/auth-freshness.test.ts"],
+      "commitSha": "f931d44",
+      "acceptanceEvidence": "invalideazaSesiuni bumps session_version to invalidate ALL of a user's sessions; wired into self password-change and admin password-reset so a stolen token on another device is rejected immediately. Existing per-request RBAC + immutability + period-close + firma guards remain enforced server-side.",
+      "risks": [
+        "revocation/version stores are in-memory per process — a multi-instance deployment needs a shared store (Redis); a full independent pen-test is an external commercial gate"
+      ],
+      "externalValidation": "independent penetration test (external, out of code scope)"
+    },
+    {
+      "id": "P11-STATUS",
+      "phase": 11,
+      "title": "Phase 11 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": ["packages/auth/src/auth.test.ts", "server/src/auth-freshness.test.ts"],
+      "commitSha": "f931d44",
+      "acceptanceEvidence": "Role/company change and revocation take effect promptly (fresh role from DB + session version), not only at token expiry; password change forces logout everywhere. RK-11 downgraded.",
+      "risks": [
+        "shared revocation store for multi-instance + independent pen-test are commercial-readiness gates"
+      ],
+      "externalValidation": "independent pen-test"
     }
   ]
 }
