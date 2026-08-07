@@ -11,19 +11,19 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 336,
+      "total": 344,
       "skipped": 1,
-      "note": "post Phase 1-11; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-12; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 136,
         "data": 52,
         "application": 53,
         "license": 22,
         "ui": 22,
+        "sync": 17,
         "fiscal-ro": 14,
         "server": 12,
         "auth": 11,
-        "sync": 9,
         "ai": 5
       }
     },
@@ -799,6 +799,49 @@
         "shared revocation store for multi-instance + independent pen-test are commercial-readiness gates"
       ],
       "externalValidation": "independent pen-test"
+    },
+    {
+      "id": "P12-R1",
+      "phase": 12,
+      "title": "Conflict-aware reconciliation — posted/ledger data never LWW-overwritten",
+      "status": "done",
+      "files": ["packages/sync/src/policy.ts"],
+      "migrations": [],
+      "tests": ["packages/sync/src/policy.test.ts"],
+      "commitSha": "1593ae9",
+      "acceptanceEvidence": "reconcileSigur: a server-locked (posted/immutable) record is never overwritten by a client push; a local edit to it is reported as a conflict and the server version is pulled, not merged. New offline drafts still push; non-locked config keeps LWW. 4 pure tests.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P12-R2",
+      "phase": 12,
+      "title": "Idempotent offline command replay (commands, not row upserts)",
+      "status": "done",
+      "files": ["packages/sync/src/offline-queue.ts"],
+      "migrations": [],
+      "tests": ["packages/sync/src/policy.test.ts"],
+      "commitSha": "1593ae9",
+      "acceptanceEvidence": "Offline financial changes are queued as commands with idempotency keys; comenziDeReluat skips already-executed keys so a replayed post is idempotent (pairs with the Phase 4 idempotency store / postDocument idempotencyKey). 4 pure tests.",
+      "risks": [
+        "the client transport wiring (persisting the queue + replaying against the API provider) is remaining UI/transport integration"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P12-STATUS",
+      "phase": 12,
+      "title": "Phase 12 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": ["packages/sync/src/policy.test.ts"],
+      "commitSha": "1593ae9",
+      "acceptanceEvidence": "Posted/ledger data is protected from last-write-wins (conflicts rejected, not merged); offline replay is command-based and idempotent. RK-12 downgraded.",
+      "risks": [
+        "wiring the offline queue + safe reconciliation into the client transport is remaining integration"
+      ],
+      "externalValidation": "n/a"
     }
   ]
 }

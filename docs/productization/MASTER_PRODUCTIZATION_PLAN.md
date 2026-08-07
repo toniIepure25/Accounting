@@ -29,7 +29,7 @@ specs where applicable. No claim without evidence.
 | 9 | SAF-T / D406 canonical | yes | done (GL from journal, reconciles; ANAF validator = external gate) |
 | 10 | Multi-company correctness + period closing | yes | done (per-firm close + scoped reports; null-firma backfill remaining) |
 | 11 | Auth freshness + security hardening | yes | done (fresh role + session version; Redis/pen-test = external) |
-| 12 | Sync/offline redesign (no LWW for posted data) | yes | todo |
+| 12 | Sync/offline redesign (no LWW for posted data) | yes | done (safe reconcile + idempotent replay; client wiring remaining) |
 | 13 | Query model + performance | yes | todo |
 | 14 | Furniture manufacturing differentiation | no (post-integrity) | todo |
 | 15 | UX / role-based usability | no | todo |
@@ -163,9 +163,20 @@ specs where applicable. No claim without evidence.
   bypass of the authoritative guards. Remaining: shared revocation store for
   multi-instance (Redis) + independent pen-test (external gates).
 
-### P12–P20
+### P12 — Sync/offline redesign (no LWW for posted data) — **done**
+- **P12-R1** Conflict-aware reconciliation — **done**: `reconcileSigur` never
+  overwrites a server-locked (posted/immutable) record; conflicts are rejected and
+  the server version pulled, not merged.
+- **P12-R2** Idempotent offline command replay — **done**: offline financial
+  changes queue as commands with idempotency keys; replay skips executed keys
+  (pairs with the Phase 4 idempotency store).
+- Acceptance: no LWW on posted/ledger data; offline replay is command-based and
+  idempotent. Remaining: wire the safe reconciliation + offline queue into the
+  client transport.
+
+### P13–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (sync/offline redesign, query/perf, furniture depth, UX,
+the program spec (query model + performance, furniture manufacturing depth, UX,
 backup/DR, CI/CD, licensing, legacy migration, docs/legal). IDs assigned when work
 starts, to avoid speculative churn.
 
