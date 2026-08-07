@@ -15,6 +15,13 @@ export const UtilizatorSchema = z.object({
   rol: RolUtilizator,
   firmaId: z.string().uuid().nullable().default(null),
   activ: z.boolean().default(true),
+  /**
+   * Contor de versiune a sesiunilor (Faza 11). Se include in tokenul de sesiune
+   * la login; serverul respinge orice token cu o versiune mai veche. Cresterea lui
+   * (la schimbarea parolei / delogare fortata de peste tot) invalideaza IMEDIAT
+   * toate sesiunile utilizatorului, fara sa astepte expirarea naturala a tokenului.
+   */
+  sessionVersion: z.number().int().min(1).default(1),
 });
 
 export type Utilizator = z.infer<typeof UtilizatorSchema>;

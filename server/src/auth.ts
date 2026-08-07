@@ -120,6 +120,7 @@ export async function autentifica(
     nume: gasit.nume,
     rol: gasit.rol as Rol,
     firmaId: gasit.firmaId,
+    sessionVersion: gasit.sessionVersion ?? 1,
     emisLa: acum.toISOString(),
     expiraLa: new Date(acum.getTime() + DURATA_SESIUNE_MS).toISOString(),
   };
@@ -127,12 +128,45 @@ export async function autentifica(
   return { ok: true, token, utilizator: payload };
 }
 
+/** Utilizatorul minim necesar pentru a decide prospetimea unei sesiuni. */
+export interface UtilizatorSesiune {
+  id: string;
+  nume: string;
+  rol: string;
+  firmaId: string | null;
+  activ: boolean;
+  sessionVersion?: number;
+}
+
 /**
- * Extrage + verifica tokenul Bearer dintr-o cerere. `null` daca lipseste sau
- * e invalid, revocat (logout) sau daca utilizatorul a fost between timp
- * dezactivat — fara verificarea din urma, dezactivarea unui utilizator din
- * Setari nu avea niciun efect practic pana la expirarea naturala a tokenului
- * (pana la 12 ore).
+ * Decide daca un token inca reprezinta o sesiune valida, folosind starea CURENTA
+ * a utilizatorului din baza (Faza 11). Pura si testabila. Intoarce sesiunea cu
+ * rol/firma/nume PROASPETE (nu cele invechite din token) sau `null` daca:
+ *  - utilizatorul nu exista / e dezactivat, sau
+ *  - versiunea sesiunii din token e mai veche (delogare fortata / schimbare parola).
+ * Asa o schimbare de rol/firma/revocare are efect la urmatoarea cerere, nu abia
+ * la expirarea tokenului.
+ */
+export function sesiuneProaspata(
+  payload: { utilizatorId: string; sessionVersion?: number },
+  utilizator: UtilizatorSesiune | null,
+): SesiuneAutentificata | null {
+  if (!utilizator || !utilizator.activ) return null;
+  if ((utilizator.sessionVersion ?? 1) !== (payload.sessionVersion ?? 1)) return null;
+  return {
+    utilizatorId: utilizator.id,
+    nume: utilizator.nume,
+    rol: utilizator.rol as Rol,
+    firmaId: utilizator.firmaId,
+  };
+}
+
+/**
+ * Extrage + verifica tokenul Bearer dintr-o cerere. `null` daca lipseste sau e
+ * invalid, revocat (logout), sau daca sesiunea nu mai e proaspata (utilizator
+ * dezactivat, versiune de sesiune invechita). Rolul si firma se citesc PROASPAT
+ * din baza — o schimbare de rol/firma are efect la urmatoarea cerere, nu abia la
+ * expirarea tokenului (pana la 12 ore).
  */
 export async function verificaCerere(
   req: IncomingMessage,
@@ -146,8 +180,21 @@ export async function verificaCerere(
   const rezultat = await verificaToken(token, SESSION_SECRET);
   if (!rezultat.valid) return null;
   const utilizator = await provider.utilizatori.getById(rezultat.payload.utilizatorId);
-  if (!utilizator?.activ) return null;
-  return rezultat.payload;
+  return sesiuneProaspata(rezultat.payload, utilizator ?? null);
+}
+
+/**
+ * Invalideaza IMEDIAT toate sesiunile unui utilizator, crescandu-i
+ * `session_version` (delogare fortata / dupa schimbarea parolei). Tokenurile cu
+ * versiunea veche sunt respinse la urmatoarea cerere.
+ */
+export async function invalideazaSesiuni(
+  provider: DataProvider,
+  utilizatorId: string,
+): Promise<void> {
+  const u = await provider.utilizatori.getById(utilizatorId);
+  if (!u) return;
+  await provider.utilizatori.update(utilizatorId, { sessionVersion: (u.sessionVersion ?? 1) + 1 });
 }
 
 /** Permisiunea ceruta pentru o resursa (tabela) + verb HTTP, `null` = orice utilizator autentificat. */

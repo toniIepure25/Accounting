@@ -10,6 +10,13 @@ export interface SesiunePayload {
   nume: string;
   rol: Rol;
   firmaId: string | null;
+  /**
+   * Versiunea sesiunii la momentul emiterii (Faza 11). Serverul o compara cu
+   * versiunea curenta a utilizatorului si respinge tokenurile invechite —
+   * delogare fortata / schimbare de parola au efect imediat. Optional pentru
+   * compatibilitate cu tokenuri emise inainte (tratate ca versiunea 1).
+   */
+  sessionVersion?: number;
   emisLa: string; // ISO
   expiraLa: string; // ISO
 }

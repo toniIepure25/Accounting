@@ -5,6 +5,7 @@ import { type Repository, randuriVizibilePentruFirma } from '@gr/data';
 import { chatAI } from './ai.js';
 import {
   autentifica,
+  invalideazaSesiuni,
   perioadaBlocataPentru,
   permisiuneResursa,
   poateAccesa,
@@ -238,6 +239,10 @@ async function main() {
           return send(403, { error: 'parola actuala este incorecta' });
         }
         await provider.utilizatori.update(eu.id, { parolaHash: await hashParola(noua) });
+        // Delogare de peste tot: invalideaza toate sesiunile (nu doar tokenul
+        // curent) dupa schimbarea parolei — un token furat pe alt dispozitiv nu
+        // mai e valabil imediat.
+        await invalideazaSesiuni(provider, eu.id);
         const header = req.headers.authorization;
         if (header?.startsWith('Bearer ')) revocaToken(header.slice('Bearer '.length).trim());
         return send(204);
@@ -260,6 +265,9 @@ async function main() {
         const tinta = await provider.utilizatori.getById(id);
         if (!tinta) return send(404, { error: 'utilizator inexistent' });
         await provider.utilizatori.update(id, { parolaHash: await hashParola(noua) });
+        // Resetarea parolei de catre admin invalideaza sesiunile tintei — daca
+        // resetarea e din cauza unui cont compromis, sesiunile atacatorului cad.
+        await invalideazaSesiuni(provider, id);
         return send(204);
       }
 

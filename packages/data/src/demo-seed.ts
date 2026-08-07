@@ -59,6 +59,7 @@ export const demoSeed: MemorySeed = {
       rol: 'admin',
       firmaId: F_TITAN,
       activ: true,
+      sessionVersion: 1,
     },
   ],
   firme: [

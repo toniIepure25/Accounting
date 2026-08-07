@@ -67,6 +67,24 @@ describe('token de sesiune', () => {
     if (r.valid) expect(r.payload.rol).toBe('contabil');
   });
 
+  it('pastreaza sessionVersion in payload (Faza 11)', async () => {
+    const token = await emiteToken(
+      {
+        utilizatorId: 'u1',
+        nume: 'Ion',
+        rol: 'admin',
+        firmaId: null,
+        sessionVersion: 3,
+        emisLa: '2026-01-01',
+        expiraLa: '2030-01-01',
+      },
+      SECRET,
+    );
+    const r = await verificaToken(token, SECRET);
+    expect(r.valid).toBe(true);
+    if (r.valid) expect(r.payload.sessionVersion).toBe(3);
+  });
+
   it('respinge un token expirat', async () => {
     const token = await emiteToken(
       {
