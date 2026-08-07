@@ -27,7 +27,7 @@ specs where applicable. No claim without evidence.
 | 7 | Fiscal event ledger + D300/D394/D390 | yes | done (D300 base from events; D394/D390 XML = external gate) |
 | 8 | e-Factura end-to-end (SPV workflow) | yes | done (durable+idempotent; real SPV/validator = external gate) |
 | 9 | SAF-T / D406 canonical | yes | done (GL from journal, reconciles; ANAF validator = external gate) |
-| 10 | Multi-company correctness + period closing | yes | todo |
+| 10 | Multi-company correctness + period closing | yes | done (per-firm close + scoped reports; null-firma backfill remaining) |
 | 11 | Auth freshness + security hardening | yes | todo |
 | 12 | Sync/offline redesign (no LWW for posted data) | yes | todo |
 | 13 | Query model + performance | yes | todo |
@@ -143,11 +143,20 @@ specs where applicable. No claim without evidence.
   journal/trial-balance; structural validity checked. Official ANAF SAF-T
   validator + full D406 field coverage + opening balances are external gates.
 
-### P10–P20
+### P10 — Multi-company correctness + period closing — **done**
+- **P10-R1** Per-firm period close enforced at the posting command — **done**
+  (`documentBlocatPentruFirma` + `asertaPerioadaDeschisa`; server guard per-firm).
+- **P10-R2** Firm-scoped ledger reports (decont, SAF-T) with no cross-company
+  leakage — **done** — verified on real SQLite with two firms.
+- Acceptance: period close is per-firm and enforced authoritatively; firm-scoped
+  reports never include another firm's posted data. Remaining: a backfill/scope
+  migration for legacy `firma_id IS NULL` rows (still globally visible).
+
+### P11–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (multi-company correctness + period close, auth freshness, sync
-redesign, query/perf, furniture depth, UX, backup/DR, CI/CD, licensing, legacy
-migration, docs/legal). IDs assigned when work starts, to avoid speculative churn.
+the program spec (auth freshness + security hardening, sync redesign, query/perf,
+furniture depth, UX, backup/DR, CI/CD, licensing, legacy migration, docs/legal).
+IDs assigned when work starts, to avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal

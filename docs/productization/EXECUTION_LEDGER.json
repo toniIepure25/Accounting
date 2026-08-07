@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 326,
+      "total": 329,
       "skipped": 1,
-      "note": "post Phase 1-9; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-10; +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 136,
         "data": 52,
-        "application": 50,
+        "application": 53,
         "license": 22,
         "ui": 22,
         "fiscal-ro": 14,
@@ -701,6 +701,56 @@
         "official SAF-T validator + full D406 field coverage is a commercial-readiness gate"
       ],
       "externalValidation": "official ANAF SAF-T validator"
+    },
+    {
+      "id": "P10-R1",
+      "phase": 10,
+      "title": "Per-firm period close enforced at the posting command",
+      "status": "done",
+      "files": [
+        "packages/core-domain/src/documents.ts",
+        "packages/application/src/perioada.ts",
+        "packages/application/src/post-document.ts",
+        "packages/application/src/lifecycle.ts",
+        "server/src/auth.ts",
+        "server/src/index.ts"
+      ],
+      "migrations": [],
+      "tests": ["packages/application/src/multi-firma.test.ts"],
+      "commitSha": "fa6dd97",
+      "acceptanceEvidence": "documentBlocatPentruFirma + asertaPerioadaDeschisa; postDocument/reverseDocument reject posting into the document firm's closed period (PerioadaInchisaError); server perioadaBlocataPentru now per-firm (was global celMaiRecentBlocaj). Verified on real SQLite: firm A's close rejects firm-A posting; firm B posts normally.",
+      "risks": [],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P10-R2",
+      "phase": 10,
+      "title": "Firm-scoped ledger reports (no cross-company leakage)",
+      "status": "done",
+      "files": ["packages/application/src/fiscal.ts", "packages/application/src/saft.ts"],
+      "migrations": [],
+      "tests": ["packages/application/src/multi-firma.test.ts"],
+      "commitSha": "fa6dd97",
+      "acceptanceEvidence": "genereazaDecontDinRegistre + genereazaSaftDinRegistre filter by firma_id (fiscal_events / journal_lines queries are firm-scoped). Verified on real SQLite: firm A's VAT return and SAF-T GL never include firm B's ledger data.",
+      "risks": [
+        "rows with firma_id IS NULL remain globally visible (legacy pre-scoping data) — new posted rows carry firma_id; a full backfill/scope-migration is a later refinement"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P10-STATUS",
+      "phase": 10,
+      "title": "Phase 10 overall",
+      "status": "done",
+      "files": [],
+      "migrations": [],
+      "tests": ["packages/application/src/multi-firma.test.ts"],
+      "commitSha": "fa6dd97",
+      "acceptanceEvidence": "Period close is per-firm and enforced at the authoritative posting step; firm-scoped reports show no cross-company leakage for posted (firma-stamped) data. RK-10 downgraded.",
+      "risks": [
+        "legacy null-firma rows are still globally visible until a scope-migration/backfill"
+      ],
+      "externalValidation": "n/a"
     }
   ]
 }
