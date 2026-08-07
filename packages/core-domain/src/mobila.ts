@@ -3,6 +3,7 @@ import {
   ConfiguratieMobilaSchema,
   type DepartamentProductie,
   type OptiuneConfigurator,
+  type StareProductie,
 } from './entities/mobila.js';
 import type { Bani } from './money.js';
 import type { Piesa, RezultatNesting } from './nesting.js';
@@ -181,6 +182,40 @@ export function verificaConfiguratie(
     }
   }
   return e;
+}
+
+/**
+ * Masina de stari a ciclului de PRODUCTIE al unei comenzi de mobila (Faza 14):
+ *   oferta → confirmata → in_productie → finalizata → livrata → facturata
+ * Starea de productie e OPERATIONALA si mutabila; se tine separat de documentul
+ * comanda (care, odata postat, e imutabil — vezi document-aggregate.ts). Astfel
+ * progresul in fabrica avanseaza fara sa atinga documentul postat.
+ */
+const TRANZITII_PRODUCTIE: Record<StareProductie, readonly StareProductie[]> = {
+  oferta: ['confirmata'],
+  confirmata: ['in_productie'],
+  in_productie: ['finalizata'],
+  finalizata: ['livrata'],
+  livrata: ['facturata'],
+  facturata: [],
+};
+
+export function tranzitieProductiePermisa(de_la: StareProductie, la: StareProductie): boolean {
+  return TRANZITII_PRODUCTIE[de_la].includes(la);
+}
+
+export class TranzitieProductieNepermisaError extends Error {
+  constructor(
+    public readonly de_la: StareProductie,
+    public readonly la: StareProductie,
+  ) {
+    super(`Tranzitie de productie nepermisa: ${de_la} -> ${la}.`);
+    this.name = 'TranzitieProductieNepermisaError';
+  }
+}
+
+export function asertaTranzitieProductie(de_la: StareProductie, la: StareProductie): void {
+  if (!tranzitieProductiePermisa(de_la, la)) throw new TranzitieProductieNepermisaError(de_la, la);
 }
 
 /** Ordinea fixa a departamentelor de productie (vezi DepartamentProductie). */

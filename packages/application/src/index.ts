@@ -16,6 +16,7 @@ export * from './accounting.js';
 export * from './fiscal.js';
 export * from './efactura.js';
 export * from './saft.js';
+export * from './productie.js';
 export * from './post-document.js';
 export * from './lifecycle.js';
 export * from './guards.js';

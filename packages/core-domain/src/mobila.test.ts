@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { ConfiguratieMobila } from './entities/mobila.js';
 import {
   DEPARTAMENTE_PRODUCTIE,
+  TranzitieProductieNepermisaError,
+  asertaTranzitieProductie,
   panouriPentruLot,
   parseConfiguratieMobila,
   randuriCroire,
   toateDepartamenteleFinalizate,
+  tranzitieProductiePermisa,
   urmatorulDepartament,
 } from './mobila.js';
 import { optimizeazaDebitare } from './nesting.js';
@@ -86,5 +89,25 @@ describe('parseConfiguratieMobila', () => {
     expect(cfg.latimeMm).toBe(900);
     expect(cfg.curier).toBe('');
     expect(cfg.departamenteFinalizate).toEqual([]);
+  });
+});
+
+describe('ciclul de productie mobila (Faza 14)', () => {
+  it('parcursul canonic oferta->confirmata->in_productie->finalizata->livrata->facturata', () => {
+    expect(tranzitieProductiePermisa('oferta', 'confirmata')).toBe(true);
+    expect(tranzitieProductiePermisa('confirmata', 'in_productie')).toBe(true);
+    expect(tranzitieProductiePermisa('in_productie', 'finalizata')).toBe(true);
+    expect(tranzitieProductiePermisa('finalizata', 'livrata')).toBe(true);
+    expect(tranzitieProductiePermisa('livrata', 'facturata')).toBe(true);
+  });
+
+  it('nu se poate sari peste o stare', () => {
+    expect(tranzitieProductiePermisa('oferta', 'in_productie')).toBe(false);
+    expect(tranzitieProductiePermisa('confirmata', 'finalizata')).toBe(false);
+    expect(tranzitieProductiePermisa('facturata', 'livrata')).toBe(false); // terminal
+    expect(() => asertaTranzitieProductie('oferta', 'in_productie')).toThrow(
+      TranzitieProductieNepermisaError,
+    );
+    expect(() => asertaTranzitieProductie('confirmata', 'in_productie')).not.toThrow();
   });
 });
