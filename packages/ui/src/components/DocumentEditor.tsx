@@ -16,6 +16,7 @@ import type { Document } from '@gr/core-domain';
 import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useCollection } from '../hooks/useCollection.js';
+import { useComenzi } from '../hooks/useComenzi.js';
 import { useAuth } from '../lib/auth-context.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useData } from '../lib/data-context.js';
@@ -66,6 +67,10 @@ const stariTone = {
 
 export function DocumentEditor(cfg: DocConfig) {
   const db = useData();
+  // Client de comenzi autoritare (retea/cloud) sau null in modul local. Cand
+  // exista, postarea unui document trece prin motorul serverului (stoc + jurnal
+  // + fiscal atomic), NU printr-un simplu PATCH de stare prin CRUD.
+  const comenzi = useComenzi();
   const { areVoie } = useAuth();
   const { firme } = useFirma();
   const toast = useToast();
@@ -331,7 +336,10 @@ export function DocumentEditor(cfg: DocConfig) {
           : (existent?.documentSursaId ?? null),
         scadenta: scadenta || null,
         observatii,
-        stare: valideaza ? ('validat' as const) : ('ciorna' as const),
+        // In modul retea postarea o face motorul (comanda de mai jos), deci
+        // documentul se scrie mai intai ca CIORNA si abia apoi e postat autoritar.
+        // In modul local (fara motor) pastram flip-ul direct de stare.
+        stare: valideaza && !comenzi ? ('validat' as const) : ('ciorna' as const),
         totalNetBani: totaluri.net,
         totalTvaBani: totaluri.tva,
         totalBrutBani: totaluri.brut,
@@ -376,6 +384,10 @@ export function DocumentEditor(cfg: DocConfig) {
         else await db.documenteLinii.create(linieInput);
       }
 
+      // Postare AUTORITARA prin motorul serverului (stoc + jurnal + fiscal atomic)
+      // cand suntem in mod retea. Ciorna tocmai scrisa e acum postata prin comanda.
+      if (valideaza && comenzi && docId) await comenzi.posteaza(docId);
+
       setOpen(false);
       documente.reload();
       toast.success(valideaza ? 'Documentul a fost validat.' : 'Ciorna a fost salvata.');
@@ -396,7 +408,10 @@ export function DocumentEditor(cfg: DocConfig) {
       );
     }
     try {
-      await db.documente.update(doc.id, { stare: 'validat' });
+      // Retea/cloud: postare autoritara prin motor (stoc + jurnal + fiscal atomic),
+      // cu blocare optimista pe versiunea documentului. Local: flip de stare.
+      if (comenzi) await comenzi.posteaza(doc.id, doc.version);
+      else await db.documente.update(doc.id, { stare: 'validat' });
       documente.reload();
       toast.success(`Documentul ${doc.cod} a fost validat.`);
     } catch (e) {
