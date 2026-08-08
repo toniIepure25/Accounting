@@ -194,8 +194,17 @@ specs where applicable. No claim without evidence.
 - The demo server now runs on a real better-sqlite3 executor (migrations + seed),
   and `POST /commands/<post|reverse|approve|cancel>-document` dispatch to
   `@gr/application` with RBAC + stable HTTP error mapping — the full engine runs
-  without PostgreSQL. Remaining UI-side wiring (DocumentEditor→/commands in network
-  mode; browser SQLite for local mode; reports off the ledgers) tracked as open.
+  without PostgreSQL.
+
+### WIRING-2 — UI posts documents through the authoritative commands — **done**
+- `createCommandClient` (`@gr/data`) + `useComenzi` (`@gr/ui`): in network mode the
+  DocumentEditor validate action writes the document as a ciorna then posts it via
+  `POST /commands/post-document` (engine: stock + journal + fiscal atomic), instead
+  of a `stare='validat'` CRUD flip; local demo (no engine) keeps the flip. Verified
+  live in the Browser preview (LAN mode) — the post command fires and the document
+  becomes `validat`. Remaining UI wiring: reverse/storno action, reports reading the
+  persisted ledgers (still recompute from documents), keyset document list, offline
+  queue + safe reconciliation in the client sync loop.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

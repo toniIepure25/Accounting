@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 375,
+      "total": 379,
       "skipped": 1,
-      "note": "post Phase 1-17 (backup/restore/DR + CLI + CI DR drill); +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-17 + UI command wiring (WIRING-2); +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 138,
-        "data": 66,
+        "data": 70,
         "application": 58,
         "server": 22,
         "license": 22,
@@ -986,6 +986,27 @@
         "Backup encryption at rest, off-site rotation and the backup SCHEDULE are operational policy, not yet automated in-product (the tooling only guarantees a proven-restorable file). Signed installer/updater for desktop remains open under Phase 17 ops scope."
       ],
       "externalValidation": "CI DR drill runs on GitHub Actions (Linux); cannot be executed inside this sandbox but is exercised on push."
+    },
+    {
+      "id": "WIRING-2",
+      "phase": 15,
+      "title": "UI posts documents through authoritative commands (network mode)",
+      "status": "done",
+      "files": [
+        "packages/data/src/api-comenzi.ts",
+        "packages/data/src/index.ts",
+        "packages/ui/src/hooks/useComenzi.ts",
+        "packages/ui/src/components/DocumentEditor.tsx"
+      ],
+      "migrations": [],
+      "tests": ["packages/data/src/api-comenzi.test.ts", "live browser E2E (LAN mode)"],
+      "commitSha": "ffcdaa7",
+      "acceptanceEvidence": "Closes more of the Phase 3 'UI sends commands' gap on the client side. Validating a document in the UI was a generic CRUD state flip (db.documente.update(id, {stare:'validat'})) that bypassed the engine. Now createCommandClient (@gr/data) posts to /commands/<name> with the live session token and surfaces server business errors (409/423/...) as their message; useComenzi (@gr/ui) returns it in network mode / null in local mode; DocumentEditor's validate action + save(validate) write the document as a CIORNA then call posteaza() when the command client exists (local demo keeps the direct flip, having no engine). Verified LIVE in the Browser preview: demo server on real in-memory SQLite (full engine) + UI in LAN mode (admin/admin123); creating+validating a plus/minus document produced exactly POST /numerotare/next -> POST /documente (201 ciorna) -> POST /documente_linii -> POST /commands/post-document (200), and the row shows 'validat'. 4 unit tests (mock fetch) + the memory-demo DocumentEditor test unchanged. Suite 375->379 passed / 1 skipped.",
+      "risks": [
+        "Only the document validate/post path is wired; save(validate) reopen-of-a-posted-doc, reverse/storno UI, and the reports (still recompute from documents rather than reading persisted journal_lines/stock_balances) remain generic-CRUD. Reverse-document command client exists (storneaza) but no UI action yet.",
+        "Demo-seed defect surfaced during verification (pre-existing, not from this change): the numbering allocator (serii_documente) is not seeded to match pre-seeded documents, so the first create of an already-seeded document type collides on ux_documente_numar (500). Tracked separately."
+      ],
+      "externalValidation": "Live browser E2E performed in-session against the demo server; not part of automated CI (an automated network-mode e2e is future work)."
     }
   ]
 }

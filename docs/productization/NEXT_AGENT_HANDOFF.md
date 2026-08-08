@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `f0d40c6` (Phase 17 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `ffcdaa7` (WIRING-2 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -36,6 +36,12 @@ planning or repeat earlier phases.
   dispatch to `@gr/application` over the server executor (RBAC + stable HTTP error
   mapping). Closes part of the Phase 3 "UI sends commands" gap at the transport
   layer. 6 server tests on better-sqlite. See `server/src/commands.ts`, `db.ts`.
+- **UI/transport wiring, slice 2 (WIRING-2)**: `createCommandClient` (`@gr/data`) +
+  `useComenzi` (`@gr/ui`) — in network mode the DocumentEditor validate action writes
+  the doc as a ciorna then posts via `POST /commands/post-document` (engine atomic),
+  not a `stare='validat'` CRUD flip; local demo keeps the flip (no engine). 4 unit
+  tests + verified LIVE in the Browser preview. See `packages/ui/src/hooks/useComenzi.ts`,
+  `packages/ui/src/components/DocumentEditor.tsx`.
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -61,10 +67,15 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **375 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 66, application 58, server 22, ui 22,
+- `npx turbo run test --force` → **379 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 70, application 58, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
+- WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
+  validating a document fired `POST /commands/post-document` (200) and the row
+  became `validat`. To reproduce: `preview_start` names `api-server` + `ui-dev`;
+  in the UI tab set `localStorage['gr-deployment-mode']='lan'` +
+  `['gr-server-url']='http://localhost:8787'`, reload, login `admin`/`admin123`.
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
 - `npm run build:web` → OK (~372 kB).
 - **Not run in-env:** real PostgreSQL (CI), Tauri native build, Playwright e2e,
@@ -73,27 +84,37 @@ planning or repeat earlier phases.
 ## What is intentionally NOT done yet (be honest)
 Cross-cutting integration debt accumulated across the integrity phases — the
 engine layers are built + tested, but not everywhere wired into the UI/transport:
-- **UI/transport wiring**: the React UI still saves via the generic provider in
-  some paths (Phase 3 commands not the only write path); UI reports (`useStoc`,
-  accounting/fiscal/SAF-T pages) still recompute from documents rather than the
-  persisted ledgers; no e-Factura / SAF-T / decont panels driving the new commands;
-  the safe reconciliation + offline command queue (Phase 12) aren't in the client
-  sync loop; `interogheazaDocumente` isn't yet the document-list source in the UI.
+- **UI/transport wiring**: document POSTING is now wired to the engine command in
+  network mode (WIRING-2) — but reverse/storno has no UI action yet (the client
+  `storneaza` exists); UI reports (`useStoc`, accounting/fiscal/SAF-T pages) still
+  recompute from documents rather than the persisted ledgers; no e-Factura / SAF-T /
+  decont panels driving the new commands; the safe reconciliation + offline command
+  queue (Phase 12) aren't in the client sync loop; `interogheazaDocumente` isn't yet
+  the document-list source in the UI.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
   in-memory revocation store needs Redis for multi-instance.
+- **Demo-seed defect (found during WIRING-2 verification, pre-existing)**: the
+  numbering allocator (`serii_documente`) is NOT seeded to match the pre-seeded
+  demo documents, so the first create of an already-seeded document type (e.g. a
+  new `receptie_furnizor` NIR) collides on `ux_documente_numar` → 500. Only affects
+  the demo seed, not the engine. Fix: seed `serii_documente` to the max existing
+  number per (firma, tip, year, serie), or make `demoSeed` documents go through the
+  numbering allocator. Tracked as a background task.
 
 ## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 + P17-R1 done)
 Remaining build directions the user selected:
-- **UI/transport wiring** — surface the built engines in the app: route document
-  save/post/reverse through the `@gr/application` commands (not generic CRUD); make
-  reports read the persisted ledgers (stock_balances / journal_lines /
-  fiscal_events) instead of recomputing; add e-Factura / SAF-T / decont / production
+- **UI/transport wiring** — POST is wired (WIRING-2). Next slices: a reverse/storno
+  UI action (client `storneaza` already exists → `POST /commands/reverse-document`);
+  make reports read the persisted ledgers (stock_balances / journal_lines /
+  fiscal_events) instead of recomputing (start with the Registru-jurnal page, which
+  still recomputes from documents); add e-Factura / SAF-T / decont / production
   panels; wire the keyset document query into the list; wire the offline command
   queue + safe reconciliation into the client sync loop; expose a backup/restore
   action in the UI (the engine is ready — `backupVerificat`/`importBazaSql`). Highest
-  immediate value; verify with the Browser preview (`preview_start`) per the run skill.
+  immediate value; verify with the Browser preview (`preview_start` `api-server` +
+  `ui-dev`, LAN mode) per the run skill.
 - **Ops (Phase 17 — remaining)** — signed installer/updater for the Tauri desktop
   app (auto-update channel), a PostgreSQL-native backup exporter mirroring
   `backupVerificat` (catalog discovery + proven restore), and in-product backup
