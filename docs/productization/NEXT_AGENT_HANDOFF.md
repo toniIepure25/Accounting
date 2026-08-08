@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `76cc9e4` before the doc commit (the doc commit is the tip).
+- HEAD SHA: `2e83d94` (Phase 16 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -36,11 +36,23 @@ planning or repeat earlier phases.
   dispatch to `@gr/application` over the server executor (RBAC + stable HTTP error
   mapping). Closes part of the Phase 3 "UI sends commands" gap at the transport
   layer. 6 server tests on better-sqlite. See `server/src/commands.ts`, `db.ts`.
+- **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
+  `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
+  engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
+  (`backup.ts`) silently omitted — the real DR fix. Tables are discovered from
+  `sqlite_master` (future tables auto-captured; `_migrations` excluded); restore is
+  atomic in one transaction with `PRAGMA defer_foreign_keys = ON` so order and the
+  documente self-reference don't matter; `verificaIntegritateBackup` gates on a
+  balanced journal and reports per-table counts. 8 tests on real SQLite (7 in
+  `@gr/data` backup-sql.test.ts, 1 end-to-end post→snapshot→restore in `@gr/application`
+  backup-dr.test.ts). **SQLite-focused** — a PostgreSQL deployment still needs
+  pg_dump/PITR; encryption + off-site rotation + a scheduled/tested restore runbook
+  are Phase 17.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **361 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 57, application 57, server 18, ui 22,
+- `npx turbo run test --force` → **369 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 64, application 58, server 18, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
 - `npm run build:web` → OK (~372 kB).
@@ -61,19 +73,23 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
   in-memory revocation store needs Redis for multi-instance.
 
-## Next priority (user chose UI-wiring + Mobila + Ops; Mobila done)
-Two remaining build directions the user selected:
+## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 done)
+Remaining build directions the user selected:
 - **UI/transport wiring** — surface the built engines in the app: route document
   save/post/reverse through the `@gr/application` commands (not generic CRUD); make
   reports read the persisted ledgers (stock_balances / journal_lines /
   fiscal_events) instead of recomputing; add e-Factura / SAF-T / decont / production
   panels; wire the keyset document query into the list; wire the offline command
-  queue + safe reconciliation into the client sync loop. Highest immediate value;
-  verify with the Browser preview (`preview_start`) per the run skill.
-- **Ops (Phase 16/17)** — backup/restore/DR (there is `packages/data/backup.ts`
-  already) + CI/CD & release engineering (signed installer/updater, tested restore,
-  runbooks). More testable in-env than UI.
-Pick per user priority; if unclear, ask.
+  queue + safe reconciliation into the client sync loop; expose a backup/restore
+  action (call `exportBazaSql`/`importBazaSql`). Highest immediate value; verify with
+  the Browser preview (`preview_start`) per the run skill.
+- **Ops (Phase 17 — CI/CD & release engineering)** — the natural continuation of
+  P16: dual-DB (SQLite + real PostgreSQL) CI job (closes RK-14), signed
+  installer/updater, and turn the P16 backup/restore into an operational DR runbook
+  (scheduled backups, encryption + off-site rotation, a periodically **tested**
+  restore, PostgreSQL pg_dump/PITR path). More testable in-env than UI.
+Pick per user priority; if unclear, ask. Suggested: **Phase 17 (Ops)** — it builds
+directly on P16 and is the most rigorously verifiable of the two in-env.
 
 ## (superseded) former next priority — Phase 14 furniture (now DONE)
 This is the first NON-launch-blocking phase and the product's first vertical

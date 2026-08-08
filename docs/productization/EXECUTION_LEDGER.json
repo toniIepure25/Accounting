@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 361,
+      "total": 369,
       "skipped": 1,
-      "note": "post Phase 1-14 + server command-endpoint wiring; +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-16 (backup/restore/DR); +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 138,
-        "data": 57,
-        "application": 57,
+        "data": 64,
+        "application": 58,
         "server": 18,
         "license": 22,
         "ui": 22,
@@ -938,6 +938,25 @@
       "risks": [
         "the React UI still saves posted docs via generic CRUD in the web-demo (memory) path; wiring DocumentEditor to call /commands (network mode) and adding a browser SQLite for local mode is the remaining UI-side work",
         "reports/panels (useStoc, accounting/fiscal/SAF-T, e-Factura, production board) not yet pointed at the persisted ledgers/commands"
+      ],
+      "externalValidation": "n/a"
+    },
+    {
+      "id": "P16-R1",
+      "phase": 16,
+      "title": "Full-database backup/restore incl. persisted ledgers (disaster recovery)",
+      "status": "done",
+      "files": ["packages/data/src/backup-sql.ts", "packages/data/src/index.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/backup-sql.test.ts",
+        "packages/application/src/backup-dr.test.ts"
+      ],
+      "commitSha": "2e83d94",
+      "acceptanceEvidence": "The provider-based backup (backup.ts) only exports tables that own a Repository, silently omitting the engine-written persisted ledgers (stock_ledger_entries/stock_balances, journal_entries/journal_lines, fiscal_events, efactura_submissions, productie_mobila) — a restore would lose the entire posted financial history (a DR hole). exportBazaSql snapshots the WHOLE database, discovering tables from sqlite_master so any future table is captured automatically (cannot be forgotten from a hand-written list); _migrations is excluded (schema is re-applied on the target before restore). importBazaSql restores atomically in one transaction with FK checks deferred to commit, so delete/insert order — including the documente→documente self-reference — is irrelevant, and any failure rolls back leaving the target untouched. Optional integrity gate (verificaIntegritateBackup) rejects a restore whose journal is unbalanced. Verified on real SQLite: +7 in @gr/data (ledger tables captured; byte-for-byte round-trip into a fresh migrated DB; self-ref restored under active FK; replace-mode wipes pre-existing rows; balanced-journal verification; unbalanced/corrupt backup rejected with rollback) and +1 end-to-end in @gr/application (post a REAL document → snapshot → restore into a new DB → documente/linii/stock/journal/fiscal row counts identical, stock balance 98, brut 24200, journal balanced). Suite 361->369 passed / 1 skipped.",
+      "risks": [
+        "SQLite-focused: table discovery uses sqlite_master and restore uses PRAGMA defer_foreign_keys (the desktop/local + demo path). A PostgreSQL deployment should back up via pg_dump / PITR; a PG-native exporter is not yet implemented.",
+        "Snapshot is a full JSON dump held in memory — fine for SME-scale DBs; a streaming/chunked exporter would be needed for very large datasets. No encryption-at-rest or off-site rotation of the snapshot file yet (operational runbook concern, Phase 17)."
       ],
       "externalValidation": "n/a"
     }

@@ -33,7 +33,7 @@ specs where applicable. No claim without evidence.
 | 13 | Query model + performance | yes | done (keyset document query + indexes; migrate remaining callers) |
 | 14 | Furniture manufacturing differentiation | no (post-integrity) | done (production lifecycle + BOM consumption; UI wiring remaining) |
 | 15 | UX / role-based usability | no | todo |
-| 16 | Backup, restore, migrations, DR | yes | todo |
+| 16 | Backup, restore, migrations, DR | yes | done (full-DB snapshot/restore incl. ledgers, verified round-trip; PG-native/encryption/runbook = P17) |
 | 17 | CI/CD + release engineering | yes | todo |
 | 18 | Licensing + customer administration | no | todo |
 | 19 | Migration from legacy (KISS/Access, CSV) | no | todo |
@@ -190,11 +190,31 @@ specs where applicable. No claim without evidence.
 - Acceptance: a furniture order drives real, atomic material consumption + costing
   through the existing engine. Remaining: UI for the configurator/production board.
 
-### P15–P20
+### WIRING-1 — Authoritative command endpoints on a real SQLite engine — **done**
+- The demo server now runs on a real better-sqlite3 executor (migrations + seed),
+  and `POST /commands/<post|reverse|approve|cancel>-document` dispatch to
+  `@gr/application` with RBAC + stable HTTP error mapping — the full engine runs
+  without PostgreSQL. Remaining UI-side wiring (DocumentEditor→/commands in network
+  mode; browser SQLite for local mode; reports off the ledgers) tracked as open.
+
+### P16 — Backup, restore, DR — **done**
+- **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
+  `exportBazaSql`/`importBazaSql` (`packages/data/src/backup-sql.ts`) snapshot the
+  WHOLE database (tables discovered from `sqlite_master`, so future tables can't be
+  forgotten; `_migrations` excluded) and restore atomically in one transaction with
+  FK deferred to commit (self-references restore correctly); optional integrity gate
+  rejects an unbalanced-journal restore. Fixes the DR hole where the provider backup
+  (`backup.ts`) silently omitted stock/journal/fiscal/e-Factura/production ledgers.
+- Acceptance: a real post→snapshot→restore-into-fresh-DB round-trip reproduces every
+  ledger byte-for-byte (verified on SQLite; +8 tests). Remaining: PostgreSQL-native
+  path (pg_dump/PITR), streaming for very large DBs, snapshot encryption + off-site
+  rotation + a scheduled/tested restore runbook — Phase 17.
+
+### P17–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (UX/role-based usability, backup/restore/DR, CI/CD + release
-engineering, licensing + customer admin, legacy migration, docs/support/legal).
-IDs assigned when work starts, to avoid speculative churn.
+the program spec (CI/CD + release engineering incl. DR runbook, licensing + customer
+admin, legacy migration, docs/support/legal). IDs assigned when work starts, to
+avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal
