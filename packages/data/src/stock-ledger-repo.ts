@@ -5,7 +5,7 @@
  * interiorul tranzactiei comenzii de postare.
  */
 
-import type { IntrareLedgerStoc, SoldCurent } from '@gr/core-domain';
+import type { IntrareLedgerStoc, MiscareStoc, SoldCurent, SoldStoc } from '@gr/core-domain';
 import type { SqlExecutor } from './sql-executor.js';
 
 export interface SoldStocPersistat {
@@ -101,6 +101,67 @@ export async function listeazaBalanteStoc(
     cantitate: Number(r.cantitate),
     valoareBani: Number(r.valoare_bani),
     pmpBani: Number(r.pmp_bani),
+  }));
+}
+
+/**
+ * Miscarile de stoc PERSISTATE (registru append-only), sub forma `MiscareStoc[]`
+ * folosita de rapoartele de stoc (fise de magazie, rulaje). Sursa de adevar
+ * scrisa la postare — NU recalculata din documente in client. Codul documentului
+ * vine dintr-un LEFT JOIN cu `documente`. Optional scopate pe firma; ordonate
+ * cronologic.
+ */
+export async function listeazaMiscariStocPersistate(
+  exec: SqlExecutor,
+  firmaId?: string | null,
+): Promise<MiscareStoc[]> {
+  const undeFirma = firmaId != null ? ' WHERE sle.firma_id = ?' : '';
+  const params = firmaId != null ? [firmaId] : [];
+  const randuri = await exec.select<{
+    id: string;
+    data: string;
+    gestiune_id: string;
+    produs_id: string;
+    document_id: string;
+    document_cod: string;
+    tip: string;
+    cantitate: number;
+    valoare_bani: number;
+  }>(
+    `SELECT sle.id AS id, sle.data AS data, sle.gestiune_id AS gestiune_id,
+            sle.produs_id AS produs_id, sle.document_id AS document_id,
+            COALESCE(d.cod, '') AS document_cod, sle.tip_document AS tip,
+            sle.cantitate AS cantitate, sle.valoare_bani AS valoare_bani
+       FROM stock_ledger_entries sle
+       LEFT JOIN documente d ON d.id = sle.document_id${undeFirma}
+      ORDER BY sle.data, sle.created_at, sle.id`,
+    params,
+  );
+  return randuri.map((r) => ({
+    id: String(r.id),
+    data: String(r.data),
+    gestiuneId: String(r.gestiune_id),
+    produsId: String(r.produs_id),
+    documentId: String(r.document_id),
+    documentCod: String(r.document_cod),
+    tip: String(r.tip),
+    cantitate: Number(r.cantitate),
+    valoareBani: Number(r.valoare_bani),
+  }));
+}
+
+/** Soldurile de stoc materializate ca `SoldStoc[]` (pentru balanta stocurilor). */
+export async function listeazaSolduriStoc(
+  exec: SqlExecutor,
+  firmaId?: string | null,
+): Promise<SoldStoc[]> {
+  const balante = await listeazaBalanteStoc(exec, firmaId);
+  return balante.map((b) => ({
+    gestiuneId: b.gestiuneId,
+    produsId: b.produsId,
+    cantitate: b.cantitate,
+    valoareBani: b.valoareBani,
+    pmpBani: b.pmpBani,
   }));
 }
 

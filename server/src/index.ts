@@ -3,7 +3,9 @@ import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
 import {
   type Repository,
+  listeazaMiscariStocPersistate,
   listeazaNoteContabilePersistate,
+  listeazaSolduriStoc,
   randuriVizibilePentruFirma,
 } from '@gr/data';
 import { chatAI } from './ai.js';
@@ -259,6 +261,20 @@ async function main() {
         }
         const note = await listeazaNoteContabilePersistate(exec, sesiune.firmaId);
         return send(200, note);
+      }
+
+      // GET /reports/stock: miscarile + soldurile de stoc din registrul persistat
+      // (fise de magazie, balanta stocurilor, rulaje), scopate pe firma sesiunii.
+      if (resource === 'reports' && id === 'stock') {
+        if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+        if (!poateAccesa(sesiune.rol, 'rapoarte.vizualizare')) {
+          return send(403, { error: 'acces interzis' });
+        }
+        const [miscari, solduri] = await Promise.all([
+          listeazaMiscariStocPersistate(exec, sesiune.firmaId),
+          listeazaSolduriStoc(exec, sesiune.firmaId),
+        ]);
+        return send(200, { miscari, solduri });
       }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu

@@ -1,5 +1,11 @@
-import type { NotaContabila } from '@gr/core-domain';
+import type { MiscareStoc, NotaContabila, SoldStoc } from '@gr/core-domain';
 import type { FurnizorToken } from './api-repo.js';
+
+/** Rapoartele de stoc citite din registru: miscari (fise/rulaje) + solduri materializate. */
+export interface RaportStoc {
+  miscari: MiscareStoc[];
+  solduri: SoldStoc[];
+}
 
 /**
  * Client pentru RAPOARTELE citite din registrele persistente ale serverului
@@ -10,6 +16,8 @@ import type { FurnizorToken } from './api-repo.js';
 export interface ClientRapoarte {
   /** Notele contabile persistate (registru-jurnal / cartea mare / balanta / fisa). */
   noteContabile(): Promise<NotaContabila[]>;
+  /** Miscarile + soldurile de stoc persistate (fise de magazie, balanta, rulaje). */
+  stoc(): Promise<RaportStoc>;
 }
 
 export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): ClientRapoarte {
@@ -37,5 +45,7 @@ export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): 
   return {
     noteContabile: () =>
       fetch(`${base}/reports/journal`, { headers: headers() }).then(ok) as Promise<NotaContabila[]>,
+    stoc: () =>
+      fetch(`${base}/reports/stock`, { headers: headers() }).then(ok) as Promise<RaportStoc>,
   };
 }
