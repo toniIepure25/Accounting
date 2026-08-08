@@ -17,6 +17,7 @@ export * from './fiscal-events-repo.js';
 export * from './efactura-repo.js';
 export * from './productie-mobila-repo.js';
 export * from './backup.js';
+export * from './backup-sql.js';
 export * from './provider.js';
 export * from './demo-seed.js';
 export * from './repositories/gestiune-repo.js';
