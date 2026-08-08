@@ -11,14 +11,14 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 369,
+      "total": 375,
       "skipped": 1,
-      "note": "post Phase 1-16 (backup/restore/DR); +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-17 (backup/restore/DR + CLI + CI DR drill); +1 skipped = gated real-PostgreSQL integration test",
       "byPackage": {
         "core-domain": 138,
-        "data": 64,
+        "data": 66,
         "application": 58,
-        "server": 18,
+        "server": 22,
         "license": 22,
         "ui": 22,
         "sync": 17,
@@ -959,6 +959,33 @@
         "Snapshot is a full JSON dump held in memory — fine for SME-scale DBs; a streaming/chunked exporter would be needed for very large datasets. No encryption-at-rest or off-site rotation of the snapshot file yet (operational runbook concern, Phase 17)."
       ],
       "externalValidation": "n/a"
+    },
+    {
+      "id": "P17-R1",
+      "phase": 17,
+      "title": "Restore-verified backup CLI + CI DR drill + DR runbook",
+      "status": "done",
+      "files": [
+        "packages/data/src/backup-sql.ts",
+        "server/src/backup-cli.ts",
+        "server/scripts/dr-drill.ts",
+        "server/package.json",
+        ".github/workflows/ci.yml",
+        "docs/ops/DR_RUNBOOK.md"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/backup-sql.test.ts (backupVerificat)",
+        "server/src/backup-cli.test.ts",
+        "server/scripts/dr-drill.ts (CI job)"
+      ],
+      "commitSha": "f0d40c6",
+      "acceptanceEvidence": "Turns the P16 snapshot into an operational DR capability that proves itself. backupVerificat (in @gr/data, node-free via an injected scratch-executor factory so the web bundle is unaffected) exports then immediately restores into a fresh scratch DB and asserts per-table row-count fidelity + a balanced journal before returning the snapshot — a corrupt/incomplete backup throws (BackupCorruptError) instead of being trusted. The @gr/server backup-cli.ts exposes backup/restore/verify over SQLite files, each wrapped with a SHA-256 checksum; restore verifies the checksum and refuses an unbalanced journal, and is atomic (rolls back on failure). A CI dr-drill job runs the WHOLE procedure on every push (seed posted data -> backup -> restore into a NEW DB -> assert integrity), so a regression in the backup/restore path breaks the build — not just unit-mocked. A DR_RUNBOOK.md documents schedule, encryption/off-site/retention, tested restore, and the PostgreSQL pg_dump/PITR path. Verified on real SQLite (+2 @gr/data, +4 @gr/server; drill green locally, exit 0). Suite 369->375 passed / 1 skipped.",
+      "risks": [
+        "SQLite-focused (desktop/local). A PostgreSQL-native exporter mirroring backupVerificat is not implemented; the server path relies on pg_dump/PITR (documented in the runbook).",
+        "Backup encryption at rest, off-site rotation and the backup SCHEDULE are operational policy, not yet automated in-product (the tooling only guarantees a proven-restorable file). Signed installer/updater for desktop remains open under Phase 17 ops scope."
+      ],
+      "externalValidation": "CI DR drill runs on GitHub Actions (Linux); cannot be executed inside this sandbox but is exercised on push."
     }
   ]
 }

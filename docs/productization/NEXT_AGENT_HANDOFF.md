@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `2e83d94` (Phase 16 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `f0d40c6` (Phase 17 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -48,12 +48,23 @@ planning or repeat earlier phases.
   backup-dr.test.ts). **SQLite-focused** — a PostgreSQL deployment still needs
   pg_dump/PITR; encryption + off-site rotation + a scheduled/tested restore runbook
   are Phase 17.
+- **Phase 17 — Ops / CI-CD & DR** (in progress): `backupVerificat` (`@gr/data`,
+  node-free via injected scratch factory) proves a snapshot restores cleanly before
+  it is trusted; `server/src/backup-cli.ts` = `backup`/`restore`/`verify` over SQLite
+  files with a SHA-256 checksum (refuses an unbalanced-journal restore); a CI
+  `dr-drill` job (`server/scripts/dr-drill.ts`, run via `npx tsx`) exercises the whole
+  backup→restore→verify procedure on every push; `docs/ops/DR_RUNBOOK.md` covers
+  schedule/encryption/off-site + the PostgreSQL pg_dump/PITR path. +6 tests (+2
+  @gr/data, +4 @gr/server). RK-14 downgraded (CI already runs a real PostgreSQL job).
+  **Remaining P17**: signed installer/updater (Tauri desktop), a PostgreSQL-native
+  backup exporter mirroring `backupVerificat`, in-product backup scheduling/encryption.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **369 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 64, application 58, server 18, ui 22,
+- `npx turbo run test --force` → **375 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 66, application 58, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
+- DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - `npx biome check .` → clean (1 pre-existing `noExplicitAny` warning).
 - `npm run build:web` → OK (~372 kB).
 - **Not run in-env:** real PostgreSQL (CI), Tauri native build, Playwright e2e,
@@ -73,7 +84,7 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
   in-memory revocation store needs Redis for multi-instance.
 
-## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 done)
+## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 + P17-R1 done)
 Remaining build directions the user selected:
 - **UI/transport wiring** — surface the built engines in the app: route document
   save/post/reverse through the `@gr/application` commands (not generic CRUD); make
@@ -81,15 +92,15 @@ Remaining build directions the user selected:
   fiscal_events) instead of recomputing; add e-Factura / SAF-T / decont / production
   panels; wire the keyset document query into the list; wire the offline command
   queue + safe reconciliation into the client sync loop; expose a backup/restore
-  action (call `exportBazaSql`/`importBazaSql`). Highest immediate value; verify with
-  the Browser preview (`preview_start`) per the run skill.
-- **Ops (Phase 17 — CI/CD & release engineering)** — the natural continuation of
-  P16: dual-DB (SQLite + real PostgreSQL) CI job (closes RK-14), signed
-  installer/updater, and turn the P16 backup/restore into an operational DR runbook
-  (scheduled backups, encryption + off-site rotation, a periodically **tested**
-  restore, PostgreSQL pg_dump/PITR path). More testable in-env than UI.
-Pick per user priority; if unclear, ask. Suggested: **Phase 17 (Ops)** — it builds
-directly on P16 and is the most rigorously verifiable of the two in-env.
+  action in the UI (the engine is ready — `backupVerificat`/`importBazaSql`). Highest
+  immediate value; verify with the Browser preview (`preview_start`) per the run skill.
+- **Ops (Phase 17 — remaining)** — signed installer/updater for the Tauri desktop
+  app (auto-update channel), a PostgreSQL-native backup exporter mirroring
+  `backupVerificat` (catalog discovery + proven restore), and in-product backup
+  scheduling + encryption/off-site rotation (the CLI + DR drill + runbook already exist).
+Pick per user priority; if unclear, ask. The most user-visible next step is now
+**UI/transport wiring** (the whole engine + ops layer is built and tested but the
+React app still writes via generic CRUD on several paths).
 
 ## (superseded) former next priority — Phase 14 furniture (now DONE)
 This is the first NON-launch-blocking phase and the product's first vertical

@@ -34,7 +34,7 @@ specs where applicable. No claim without evidence.
 | 14 | Furniture manufacturing differentiation | no (post-integrity) | done (production lifecycle + BOM consumption; UI wiring remaining) |
 | 15 | UX / role-based usability | no | todo |
 | 16 | Backup, restore, migrations, DR | yes | done (full-DB snapshot/restore incl. ledgers, verified round-trip; PG-native/encryption/runbook = P17) |
-| 17 | CI/CD + release engineering | yes | todo |
+| 17 | CI/CD + release engineering | yes | in progress (restore-verified backup CLI + CI DR drill + runbook done; signed installer/updater + PG-native backup remain) |
 | 18 | Licensing + customer administration | no | todo |
 | 19 | Migration from legacy (KISS/Access, CSV) | no | todo |
 | 20 | Docs, support, legal, commercialization | no | todo |
@@ -210,11 +210,21 @@ specs where applicable. No claim without evidence.
   path (pg_dump/PITR), streaming for very large DBs, snapshot encryption + off-site
   rotation + a scheduled/tested restore runbook — Phase 17.
 
-### P17–P20
+### P17 — CI/CD + release engineering — **in progress**
+- **P17-R1** Restore-verified backup CLI + CI DR drill + runbook — **done**:
+  `backupVerificat` (`@gr/data`) proves a snapshot restores cleanly into a scratch DB
+  (fidelity + balanced journal) before it is trusted; `server/src/backup-cli.ts`
+  (`backup`/`restore`/`verify`) wraps each snapshot in a SHA-256 checksum and refuses
+  an unbalanced-journal restore; a CI `dr-drill` job exercises the whole procedure on
+  every push; `docs/ops/DR_RUNBOOK.md` documents schedule/encryption/off-site + the
+  PostgreSQL pg_dump/PITR path. CI already has real-PostgreSQL + e2e jobs.
+- Remaining: signed installer/updater (Tauri desktop), a PostgreSQL-native backup
+  exporter mirroring `backupVerificat`, and in-product scheduling/encryption of backups.
+
+### P18–P20
 Detailed requirements captured in the ledger as each phase is reached, following
-the program spec (CI/CD + release engineering incl. DR runbook, licensing + customer
-admin, legacy migration, docs/support/legal). IDs assigned when work starts, to
-avoid speculative churn.
+the program spec (licensing + customer admin, legacy migration, docs/support/legal).
+IDs assigned when work starts, to avoid speculative churn.
 
 ## Commercial-readiness gates (must all pass before "generally ready for sale")
 Engineering integrity · fiscal assurance (incl. **external accountant + legal
