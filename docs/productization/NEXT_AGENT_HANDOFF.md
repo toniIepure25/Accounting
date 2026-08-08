@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `ffcdaa7` (WIRING-2 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `6637181` (WIRING-3 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -42,6 +42,16 @@ planning or repeat earlier phases.
   not a `stare='validat'` CRUD flip; local demo keeps the flip (no engine). 4 unit
   tests + verified LIVE in the Browser preview. See `packages/ui/src/hooks/useComenzi.ts`,
   `packages/ui/src/components/DocumentEditor.tsx`.
+- **UI/transport wiring, slice 3 (WIRING-3)**: (a) storno button on validat docs →
+  `POST /commands/reverse-document` (`comenzi.storneaza`), engine writes inverse
+  entries + original stays immutable (local flips to stornat); (b) accounting reports
+  read the persisted journal — `journal-repo.listeazaNoteContabilePersistate` +
+  `@gr/data createReportsClient` + `@gr/ui useRapoarte` + server `GET /reports/journal`
+  (firma-scoped); `useContabilitate` prefers persisted notes in network mode, so
+  registru-jurnal / cartea mare / balanta / fisa reflect the ledger, not a recompute.
+  +3 @gr/data tests + verified LIVE (post BON → storno → both shown in the persisted
+  Registru-jurnal, balanced, reverse-nets-to-zero). See `packages/ui/src/hooks/useRapoarte.ts`,
+  `packages/ui/src/hooks/useContabilitate.ts`, `server/src/index.ts` (`/reports/journal`).
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -67,8 +77,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **379 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 70, application 58, server 22, ui 22,
+- `npx turbo run test --force` → **382 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 73, application 58, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -84,13 +94,16 @@ planning or repeat earlier phases.
 ## What is intentionally NOT done yet (be honest)
 Cross-cutting integration debt accumulated across the integrity phases — the
 engine layers are built + tested, but not everywhere wired into the UI/transport:
-- **UI/transport wiring**: document POSTING is now wired to the engine command in
-  network mode (WIRING-2) — but reverse/storno has no UI action yet (the client
-  `storneaza` exists); UI reports (`useStoc`, accounting/fiscal/SAF-T pages) still
-  recompute from documents rather than the persisted ledgers; no e-Factura / SAF-T /
-  decont panels driving the new commands; the safe reconciliation + offline command
-  queue (Phase 12) aren't in the client sync loop; `interogheazaDocumente` isn't yet
-  the document-list source in the UI.
+- **UI/transport wiring**: document POST + STORNO are wired to the engine commands in
+  network mode (WIRING-2/3), and the ACCOUNTING reports (registru-jurnal / cartea mare
+  / balanta / fisa via `useContabilitate`) now read the persisted journal
+  (`GET /reports/journal`). Still recompute/generic: STOCK reports (`useStoc`), the
+  fiscal / decont (D300) / SAF-T pages, and no e-Factura / SAF-T / decont panels
+  driving the commands; the safe reconciliation + offline command queue (Phase 12)
+  aren't in the client sync loop; `interogheazaDocumente` isn't yet the document-list
+  source in the UI. All of these only read the ledger in NETWORK mode — local/demo
+  (memory, no engine) still recomputes, so a browser SQLite engine for local mode
+  would unify the two paths.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -105,16 +118,17 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 
 ## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 + P17-R1 done)
 Remaining build directions the user selected:
-- **UI/transport wiring** — POST is wired (WIRING-2). Next slices: a reverse/storno
-  UI action (client `storneaza` already exists → `POST /commands/reverse-document`);
-  make reports read the persisted ledgers (stock_balances / journal_lines /
-  fiscal_events) instead of recomputing (start with the Registru-jurnal page, which
-  still recomputes from documents); add e-Factura / SAF-T / decont / production
-  panels; wire the keyset document query into the list; wire the offline command
-  queue + safe reconciliation into the client sync loop; expose a backup/restore
-  action in the UI (the engine is ready — `backupVerificat`/`importBazaSql`). Highest
-  immediate value; verify with the Browser preview (`preview_start` `api-server` +
-  `ui-dev`, LAN mode) per the run skill.
+- **UI/transport wiring** — POST + STORNO + accounting reports are wired (WIRING-2/3).
+  Next slices: make STOCK reports read `stock_balances`/`stock_ledger_entries` (add a
+  `GET /reports/stock` mirroring `/reports/journal`, then point `useStoc` at it in
+  network mode); make the fiscal decont (D300) / SAF-T pages read `fiscal_events`
+  (`genereazaDecontDinRegistre` / `genereazaSaftDinRegistre` already exist in
+  `@gr/application`); wire the keyset document query (`interogheazaDocumente`) into the
+  document list; wire the offline command queue + safe reconciliation into the client
+  sync loop; expose a backup/restore action in the UI (`backupVerificat`/`importBazaSql`
+  ready). Verify with the Browser preview (`preview_start` `api-server` + `ui-dev`, LAN
+  mode; login admin/admin123) per the run skill. NOTE: restarting `api-server`
+  invalidates the session token (new SESSION_SECRET) — re-login after a restart.
 - **Ops (Phase 17 — remaining)** — signed installer/updater for the Tauri desktop
   app (auto-update channel), a PostgreSQL-native backup exporter mirroring
   `backupVerificat` (catalog discovery + proven restore), and in-product backup

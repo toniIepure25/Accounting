@@ -202,9 +202,21 @@ specs where applicable. No claim without evidence.
   `POST /commands/post-document` (engine: stock + journal + fiscal atomic), instead
   of a `stare='validat'` CRUD flip; local demo (no engine) keeps the flip. Verified
   live in the Browser preview (LAN mode) — the post command fires and the document
-  becomes `validat`. Remaining UI wiring: reverse/storno action, reports reading the
-  persisted ledgers (still recompute from documents), keyset document list, offline
-  queue + safe reconciliation in the client sync loop.
+  becomes `validat`.
+
+### WIRING-3 — Reverse/storno action + accounting reports off the persisted ledger — **done**
+- Storno: a reverse button on validat documents → `POST /commands/reverse-document`
+  (`comenzi.storneaza`) in network mode; the engine writes the inverse stock/journal/
+  fiscal and keeps the original immutable (local demo flips to `stornat`).
+- Reports: `journal-repo.listeazaNoteContabilePersistate` + `createReportsClient`
+  (`@gr/data`) + `useRapoarte` (`@gr/ui`) + server `GET /reports/journal` (firma-scoped).
+  `useContabilitate` reads the persisted registru in network mode (recompute fallback
+  local), so registru-jurnal / cartea mare / balanta / fisa reflect the engine's
+  ledger, not a client recompute.
+- Verified live (LAN mode): posting a retail BON then storno produced BON + inverse
+  BON (reverse-nets-to-zero), and the Registru-jurnal rendered both from
+  `GET /reports/journal` (200), balanced. Remaining UI wiring: stock/fiscal/SAF-T
+  reports off the ledgers, keyset document list, offline queue + safe reconciliation.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

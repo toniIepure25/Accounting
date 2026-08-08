@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 379,
+      "total": 382,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI command wiring (WIRING-2); +1 skipped = gated real-PostgreSQL integration test",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2/3: post, storno, persisted-journal reports); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 70,
+        "data": 73,
         "application": 58,
         "server": 22,
         "license": 22,
@@ -1007,6 +1007,30 @@
         "Demo-seed defect surfaced during verification (pre-existing, not from this change): the numbering allocator (serii_documente) is not seeded to match pre-seeded documents, so the first create of an already-seeded document type collides on ux_documente_numar (500). Tracked separately."
       ],
       "externalValidation": "Live browser E2E performed in-session against the demo server; not part of automated CI (an automated network-mode e2e is future work)."
+    },
+    {
+      "id": "WIRING-3",
+      "phase": 15,
+      "title": "UI reverse/storno action + accounting reports read the persisted journal",
+      "status": "done",
+      "files": [
+        "packages/ui/src/components/DocumentEditor.tsx",
+        "packages/data/src/api-rapoarte.ts",
+        "packages/data/src/journal-repo.ts",
+        "packages/ui/src/hooks/useRapoarte.ts",
+        "packages/ui/src/hooks/useContabilitate.ts",
+        "packages/ui/src/pages/contabilitate.tsx",
+        "server/src/index.ts"
+      ],
+      "migrations": [],
+      "tests": ["packages/data/src/journal-repo.test.ts", "live browser E2E (LAN mode)"],
+      "commitSha": "6637181",
+      "acceptanceEvidence": "Two UI-wiring slices, verified LIVE in the Browser preview (server on demo SQLite + full engine, UI in LAN mode). (a) Reverse/storno: DocumentEditor shows a storno button on validat documents routing through POST /commands/reverse-document (comenzi.storneaza) in network mode — engine writes inverse stock+journal+fiscal, original stays immutable; local demo flips to stornat. Verified: storno of BON-2026-000002 created BON-2026-000003 with the exact inverse postings (reverse-nets-to-zero), original intact. (b) Accounting reports off the persisted ledger: journal-repo listeazaNoteContabilePersistate groups journal_entries+journal_lines into NotaContabila[]; @gr/data createReportsClient + @gr/ui useRapoarte fetch GET /reports/journal (firma-scoped, contabilitate.vizualizare); useContabilitate reads the persisted registru in network mode (recompute fallback local), so ALL accounting pages (registru-jurnal, cartea mare, balanta, fisa) reflect the ledger the engine wrote, not a client recompute. Verified: Registru-jurnal rendered the posted BON's double-entry (4111/707/4427 + cost 607/371), balanced, from GET /reports/journal (200). +3 @gr/data tests. Suite 379->382 passed / 1 skipped.",
+      "risks": [
+        "Reports read the persisted journal only in NETWORK mode; local/demo (memory, no engine) still recomputes from documents — acceptable, but a browser SQLite engine for local mode would unify the two (still open).",
+        "Only the accounting family (via useContabilitate) is on the persisted ledger; stock reports (useStoc), fiscal/decont/SAF-T pages, and the document list (interogheazaDocumente) still recompute or use generic list — remaining wiring."
+      ],
+      "externalValidation": "Live browser E2E in-session (post, storno, persisted-journal report) against the demo server; not part of automated CI."
     }
   ]
 }
