@@ -1,7 +1,11 @@
 import { createServer } from 'node:http';
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
-import { type Repository, randuriVizibilePentruFirma } from '@gr/data';
+import {
+  type Repository,
+  listeazaNoteContabilePersistate,
+  randuriVizibilePentruFirma,
+} from '@gr/data';
 import { chatAI } from './ai.js';
 import {
   autentifica,
@@ -243,6 +247,18 @@ async function main() {
         const body = (await readBody(req)) as any;
         const rez = await ruleazaComanda(exec, id, body ?? {}, sesiune.nume);
         return send(rez.status, rez.body);
+      }
+
+      // Rapoarte citite din REGISTRELE persistente (sursa de adevar), nu
+      // recalculate din documente in client. GET /reports/journal intoarce notele
+      // contabile din journal_entries + journal_lines, scopate pe firma sesiunii.
+      if (resource === 'reports' && id === 'journal') {
+        if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+        if (!poateAccesa(sesiune.rol, 'contabilitate.vizualizare')) {
+          return send(403, { error: 'acces interzis' });
+        }
+        const note = await listeazaNoteContabilePersistate(exec, sesiune.firmaId);
+        return send(200, note);
       }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu

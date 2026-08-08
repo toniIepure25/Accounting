@@ -13,7 +13,7 @@ import {
   ronToBani,
 } from '@gr/core-domain';
 import type { Document } from '@gr/core-domain';
-import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, Pencil, Plus, Trash2, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useCollection } from '../hooks/useCollection.js';
 import { useComenzi } from '../hooks/useComenzi.js';
@@ -418,6 +418,34 @@ export function DocumentEditor(cfg: DocConfig) {
       toast.error(e instanceof Error ? e.message : 'Validarea documentului a esuat.');
     }
   };
+  const storneaza = async (doc: Document) => {
+    if (!areVoie('documente.validare'))
+      return toast.error('Nu ai drept de stornare a documentelor.');
+    if (documentBlocat(doc.data, blocajGlobal)) {
+      return toast.error(
+        `Perioada este inchisa pana la ${blocajGlobal} — documentul din ${doc.data} nu mai poate fi stornat.`,
+      );
+    }
+    const ok = await confirmDialog({
+      title: 'Storneaza documentul',
+      message: `Storneaza documentul ${doc.cod}? Se genereaza inregistrarile inverse (stoc + jurnal + fiscal), documentul original ramanand imutabil.`,
+      confirmLabel: 'Storneaza',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      // Retea/cloud: stornare autoritara prin motor — genereaza documentul de storno
+      // care neteaza la zero registrele (stoc + jurnal + fiscal), pastrand originalul
+      // imutabil. Local (fara motor): marcam originalul `stornat`, ca recalcularea din
+      // documente sa-i excluda efectul (simetric cu postarea locala).
+      if (comenzi) await comenzi.storneaza(doc.id, { data: new Date().toISOString().slice(0, 10) });
+      else await db.documente.update(doc.id, { stare: 'stornat' });
+      documente.reload();
+      toast.success(`Documentul ${doc.cod} a fost stornat.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Stornarea documentului a esuat.');
+    }
+  };
   const sterge = async (doc: Document) => {
     if (!areVoie('documente.validare'))
       return toast.error('Nu ai drept de stergere a documentelor.');
@@ -497,6 +525,17 @@ export function DocumentEditor(cfg: DocConfig) {
                 aria-label="Valideaza documentul"
               >
                 <CheckCircle2 className="h-4 w-4 text-success" />
+              </Button>
+            )}
+            {d.stare === 'validat' && areVoie('documente.validare') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => storneaza(d)}
+                title="Storneaza"
+                aria-label="Storneaza documentul"
+              >
+                <Undo2 className="h-4 w-4 text-warning" />
               </Button>
             )}
             <Button

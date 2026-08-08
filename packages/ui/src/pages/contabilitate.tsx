@@ -113,7 +113,7 @@ export function RegistruJurnalPage() {
     <div>
       <PageHeader
         title="Registru-jurnal"
-        subtitle="Note contabile generate automat din documente (partida dubla)"
+        subtitle="Note contabile din registrul-jurnal persistat (partida dubla)"
         actions={
           <Button variant="secondary" onClick={() => printHtml(registruJurnalHtml(note))}>
             <Printer className="h-4 w-4" /> Printeaza / PDF
