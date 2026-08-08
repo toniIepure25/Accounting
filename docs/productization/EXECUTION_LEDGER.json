@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 382,
+      "total": 385,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2/3: post, storno, persisted-journal reports); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2/3/4: post, storno, persisted journal + stock reports); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 73,
+        "data": 76,
         "application": 58,
         "server": 22,
         "license": 22,
@@ -1031,6 +1031,27 @@
         "Only the accounting family (via useContabilitate) is on the persisted ledger; stock reports (useStoc), fiscal/decont/SAF-T pages, and the document list (interogheazaDocumente) still recompute or use generic list — remaining wiring."
       ],
       "externalValidation": "Live browser E2E in-session (post, storno, persisted-journal report) against the demo server; not part of automated CI."
+    },
+    {
+      "id": "WIRING-4",
+      "phase": 15,
+      "title": "Stock reports read the persisted stock ledger (network mode)",
+      "status": "done",
+      "files": [
+        "packages/data/src/stock-ledger-repo.ts",
+        "packages/data/src/api-rapoarte.ts",
+        "packages/ui/src/hooks/useStoc.ts",
+        "server/src/index.ts"
+      ],
+      "migrations": [],
+      "tests": ["packages/data/src/stock-ledger-repo.test.ts", "live browser E2E (LAN mode)"],
+      "commitSha": "b5c9763",
+      "acceptanceEvidence": "The stock reports (balanta stocurilor, fise de magazie, rulaje — all via useStoc) recomputed movements + balances from documents in the client. In network mode they now read the persisted stock ledger the engine wrote at posting. stock-ledger-repo.listeazaMiscariStocPersistate returns MiscareStoc[] from stock_ledger_entries LEFT JOIN documente (doc code), firma-scoped + chronological; listeazaSolduriStoc returns SoldStoc[] from stock_balances. @gr/data createReportsClient gains stoc(); server GET /reports/stock (firma-scoped, rapoarte.vizualizare). useStoc reads it in network mode (recompute fallback local; nomenclatoare still from the provider in both modes). +3 @gr/data tests. Verified LIVE (LAN mode): a +10 MDF18 plus/minus showed in Balanta stocurilor (10, PMP 70.00, 700.00) and Fise de magazie (Intrare 10, 700.00) from GET /reports/stock (200), not a recompute. Suite 382->385 passed / 1 skipped.",
+      "risks": [
+        "Reads the ledger only in NETWORK mode; local/demo (memory, no engine) still recomputes from documents. A browser SQLite engine for local mode would unify the two.",
+        "Remaining recompute/generic in the UI: fiscal decont (D300) / SAF-T pages, and the document list (interogheazaDocumente). Offline queue + safe reconciliation still not in the client sync loop."
+      ],
+      "externalValidation": "Live browser E2E in-session (post -> stock reports) against the demo server; not part of automated CI."
     }
   ]
 }

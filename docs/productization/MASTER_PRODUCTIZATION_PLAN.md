@@ -215,8 +215,18 @@ specs where applicable. No claim without evidence.
   ledger, not a client recompute.
 - Verified live (LAN mode): posting a retail BON then storno produced BON + inverse
   BON (reverse-nets-to-zero), and the Registru-jurnal rendered both from
-  `GET /reports/journal` (200), balanced. Remaining UI wiring: stock/fiscal/SAF-T
-  reports off the ledgers, keyset document list, offline queue + safe reconciliation.
+  `GET /reports/journal` (200), balanced.
+
+### WIRING-4 — Stock reports off the persisted stock ledger — **done**
+- `stock-ledger-repo.listeazaMiscariStocPersistate` (movements from
+  `stock_ledger_entries` + doc code via join) + `listeazaSolduriStoc` (balances from
+  `stock_balances`); `@gr/data createReportsClient.stoc()`; server `GET /reports/stock`
+  (firma-scoped, `rapoarte.vizualizare`). `useStoc` reads it in network mode (recompute
+  fallback local), so balanta stocurilor / fise de magazie / rulaje reflect the ledger.
+- Verified live (LAN mode): a +10 MDF18 plus/minus showed in Balanta stocurilor
+  (10, PMP 70.00, 700.00) and Fise de magazie (Intrare 10, 700.00) from
+  `GET /reports/stock` (200). Remaining UI wiring: fiscal decont (D300) / SAF-T pages
+  off `fiscal_events`, keyset document list, offline queue + safe reconciliation.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
