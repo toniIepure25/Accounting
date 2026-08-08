@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fromBetterSqlite } from './adapters/better-sqlite.js';
 import {
   BackupCorruptError,
+  backupVerificat,
   descoperaTabele,
   exportBazaSql,
   importBazaSql,
@@ -226,5 +227,19 @@ describe('backup-sql — DR complet la nivel de baza (registre incluse)', () => 
     expect(tabele.some((t) => t.startsWith('sqlite_'))).toBe(false);
     expect(tabele).toContain('stock_ledger_entries');
     expect(tabele).toContain('journal_lines');
+  });
+
+  it('backupVerificat probeaza restaurarea intr-o baza-scratch si intoarce instantaneul', async () => {
+    const snap = await backupVerificat(sursa, bazaGoala);
+    expect(snap.tabele.journal_lines).toHaveLength(3);
+    expect(snap.tabele.stock_ledger_entries).toHaveLength(1);
+  });
+
+  it('backupVerificat respinge o baza sursa corupta (jurnal dezechilibrat) — nu scrie un backup inutil', async () => {
+    // Coruptie la sursa: stergem o linie de credit => debit != credit. Proba de
+    // restaurare (integritate) trebuie sa prinda asta INAINTE de a intoarce un
+    // instantaneu pe care apoi l-am fi scris pe disc crezand ca e valid.
+    await sursa.execute("DELETE FROM journal_lines WHERE cont = '4427'");
+    await expect(backupVerificat(sursa, bazaGoala)).rejects.toBeInstanceOf(BackupCorruptError);
   });
 });

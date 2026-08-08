@@ -76,6 +76,25 @@ jobs:
       - name: Teste server (inclusiv integrarea PostgreSQL reala)
         run: npm test --workspace=@gr/server
 
+  dr-drill:
+    name: Exercitiu DR (backup -> restaurare -> verificare)
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Instaleaza dependintele
+        run: npm ci
+      # Un backup pe care nu l-ai test-restaurat NU e un backup. Acest job PROBEAZA
+      # procedura reala de disaster-recovery pe fiecare push: creeaza o baza SQLite
+      # cu date postate, o salveaza (backup probat + checksum), o restaureaza intr-o
+      # baza NOUA si verifica integritatea — nu doar teste unitare, ci drill-ul in sine.
+      - name: Ruleaza exercitiul DR
+        run: npx tsx server/scripts/dr-drill.ts
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest

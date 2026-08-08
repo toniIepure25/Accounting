@@ -122,6 +122,47 @@ export async function importBazaSql(
   });
 }
 
+/**
+ * Face un backup si il PROBEAZA imediat, restaurandu-l intr-o baza-scratch
+ * proaspata si verificand ca round-trip-ul e fidel (acelasi numar de randuri per
+ * tabela) si ca jurnalul ramane echilibrat. Un backup pe care nu l-ai
+ * test-restaurat NU e un backup — poate fi corupt/incomplet fara sa stii pana in
+ * ziua dezastrului. Intoarce instantaneul DOAR daca proba a trecut; altfel arunca
+ * `BackupCorruptError` (deci nu ajungi sa scrii pe disc un backup nefolositor).
+ *
+ * `creeazaScratchMigrat` produce un executor pe o baza GOALA dar deja migrata la
+ * aceeasi schema (ex. `() => { const e = fromBetterSqlite(new Database(':memory:'));
+ * await migrate(e, migratii()); return e; }`). Injectat ca sa tinem acest modul
+ * liber de dependinte de driver/Node (e importat si in bundle-ul web).
+ */
+export async function backupVerificat(
+  exec: SqlExecutor,
+  creeazaScratchMigrat: () => Promise<SqlExecutor>,
+): Promise<BackupBaza> {
+  const snapshot = await exportBazaSql(exec);
+  const sursa = await verificaIntegritateBackup(exec);
+
+  const scratch = await creeazaScratchMigrat();
+  await importBazaSql(scratch, snapshot, { verificaIntegritatea: true });
+  const proba = await verificaIntegritateBackup(scratch);
+
+  for (const [tabela, n] of Object.entries(sursa.randuriPeTabela)) {
+    if (proba.randuriPeTabela[tabela] !== n) {
+      throw new BackupCorruptError(
+        `proba de restaurare a esuat pentru "${tabela}": ${n} randuri in sursa, ${proba.randuriPeTabela[tabela] ?? 0} dupa restaurare`,
+      );
+    }
+  }
+  if (
+    proba.totalDebitBani !== sursa.totalDebitBani ||
+    proba.totalCreditBani !== sursa.totalCreditBani
+  ) {
+    throw new BackupCorruptError('proba de restaurare a alterat totalurile din jurnal');
+  }
+
+  return snapshot;
+}
+
 /** Ridicata cand verificarea de integritate a backup-ului esueaza. */
 export class BackupCorruptError extends Error {
   constructor(mesaj: string) {

@@ -17,7 +17,7 @@ import { createPgExecutor } from './pg-executor.js';
 const AICI = dirname(fileURLToPath(import.meta.url));
 const DIRECTOR_MIGRATII = join(AICI, '../../db/migrations');
 
-function incarcaMigratii(): Migration[] {
+export function incarcaMigratii(): Migration[] {
   return readdirSync(DIRECTOR_MIGRATII)
     .filter((f) => f.endsWith('.sql'))
     .sort()
