@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@gr/core-domain": "*",
+    "@gr/sync": "*",
     "zod": "^3.24.1"
   },
   "devDependencies": {

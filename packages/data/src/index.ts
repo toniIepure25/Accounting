@@ -7,6 +7,7 @@ export * from './document-query.js';
 export * from './api-repo.js';
 export * from './api-comenzi.js';
 export * from './api-rapoarte.js';
+export * from './offline-comenzi.js';
 export * from './numerotare.js';
 export * from './api-numerotare.js';
 export * from './audit-wrapper.js';

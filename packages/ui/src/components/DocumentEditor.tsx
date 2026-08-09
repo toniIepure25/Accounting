@@ -13,6 +13,7 @@ import {
   ronToBani,
 } from '@gr/core-domain';
 import type { Document } from '@gr/core-domain';
+import { esteInCoada } from '@gr/data';
 import { CheckCircle2, Pencil, Plus, Trash2, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useComenzi } from '../hooks/useComenzi.js';
@@ -26,6 +27,10 @@ import { useToast } from '../lib/toast.js';
 import { type Column, DataTable } from './DataTable.js';
 import { Field, Modal, Select, Textarea } from './controls.js';
 import { Badge, Button, Input, PageHeader } from './ui.js';
+
+/** Mesaj afisat cand o comanda a fost pusa in coada offline (server inaccesibil). */
+const MESAJ_IN_COADA =
+  'Fara conexiune — comanda a fost pusa in coada si se trimite automat la reconectare.';
 
 export interface DocConfig {
   tip: DocumentTip;
@@ -391,6 +396,12 @@ export function DocumentEditor(cfg: DocConfig) {
       documente.reload();
       toast.success(valideaza ? 'Documentul a fost validat.' : 'Ciorna a fost salvata.');
     } catch (e) {
+      if (esteInCoada(e)) {
+        setOpen(false);
+        documente.reload();
+        toast.info(MESAJ_IN_COADA);
+        return;
+      }
       toast.error(e instanceof Error ? e.message : 'Salvarea documentului a esuat.');
     }
   };
@@ -414,6 +425,7 @@ export function DocumentEditor(cfg: DocConfig) {
       documente.reload();
       toast.success(`Documentul ${doc.cod} a fost validat.`);
     } catch (e) {
+      if (esteInCoada(e)) return toast.info(MESAJ_IN_COADA);
       toast.error(e instanceof Error ? e.message : 'Validarea documentului a esuat.');
     }
   };
@@ -442,6 +454,7 @@ export function DocumentEditor(cfg: DocConfig) {
       documente.reload();
       toast.success(`Documentul ${doc.cod} a fost stornat.`);
     } catch (e) {
+      if (esteInCoada(e)) return toast.info(MESAJ_IN_COADA);
       toast.error(e instanceof Error ? e.message : 'Stornarea documentului a esuat.');
     }
   };
