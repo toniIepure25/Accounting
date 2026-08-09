@@ -11,16 +11,16 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 411,
+      "total": 415,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike (browser SQLite executor); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike + WIRING-12 local-sqlite mode; +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 99,
+        "data": 101,
         "application": 61,
         "server": 22,
         "license": 22,
-        "ui": 22,
+        "ui": 24,
         "sync": 17,
         "fiscal-ro": 14,
         "auth": 11,
@@ -1224,6 +1224,36 @@
         "WASM init is async and adds ~1-2 MB to the LOCAL-mode bundle when wired — acceptable for an offline-capable app, but a load path to design."
       ],
       "externalValidation": "Contract parity + engine-on-WASM proven by @gr/data + @gr/application vitest suites (WASM runs in vitest). No browser E2E yet (integration pending)."
+    },
+    {
+      "id": "WIRING-12",
+      "phase": 15,
+      "title": "local-sqlite mode — persistent in-browser SQLite provider",
+      "status": "done",
+      "files": [
+        "scripts/genereaza-migratii-incorporate.mjs",
+        "packages/data/src/migratii-incorporate.ts",
+        "packages/ui/src/lib/local-sqlite.ts",
+        "packages/ui/src/lib/data-context.tsx",
+        "packages/ui/src/pages/Setari.tsx",
+        "packages/ui/src/hooks/useComenzi.ts",
+        "packages/ui/src/hooks/useRapoarte.ts",
+        "packages/ui/src/hooks/useAdmin.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/migratii-incorporate.test.ts (2: drift + applies-on-fresh)",
+        "packages/ui/src/lib/local-sqlite.test.ts (2: seed + persistence round-trip)",
+        "live browser E2E (local-sqlite mode)"
+      ],
+      "commitSha": "670acc0",
+      "acceptanceEvidence": "Finishes the WIRING-11 spike: LOCAL (web) mode runs a REAL, PERSISTENT SQLite DB in the browser (sql.js/WASM) instead of the ephemeral in-memory demo — data survives a refresh. Migrations bundle (generated MIGRATII_INCORPORATE, JSON-encoded, bundler-safe; drift test keeps it identical to db/migrations/*.sql). creeazaProviderLocalSqlite: init WASM (fromSqlJs) -> load snapshot -> migrate (idempotent) -> seed on first run -> createSqlProvider, with IndexedDB persistence (whole-DB db.export() debounced after writes, reloaded on init). data-context: 'local-sqlite' mode builds the provider ASYNC (loading gate) with in-memory fallback on WASM failure; server/demo stay synchronous; useComenzi/useRapoarte/useAdmin exclude local-sqlite from server; Setari adds the option. +2 @gr/data + +2 @gr/ui tests. Suite 411->415 / 1 skipped; typecheck 11/11; biome clean; build:web OK (sql.js lazy-loads only in local-sqlite mode). Verified LIVE (local-sqlite, no server): WASM engine initialized in-browser, migrated the real schema, seeded demo, persisted a 471 KB snapshot to IndexedDB; app reads all data from the SQLite provider; reload loads from the persisted snapshot (no re-seed, no errors). Write->reload persistence cycle covered by the @gr/ui unit test.",
+      "risks": [
+        "local-sqlite currently runs the same POSTING as demo (CRUD state-flip) + report RECOMPUTE from documents — the local COMMAND engine (post/reverse via @gr/application on the local exec) and local ledger reports are the NEXT step; only then does local-sqlite run the full engine (journal/stock/fiscal) offline and enable reconcileSigur.",
+        "Persistence is whole-DB snapshot (db.export()) on each write (debounced) — fine at single-user desktop/web scale; a very large local DB would want incremental persistence (e.g. OPFS/wa-sqlite).",
+        "sql.js is a synchronous single-writer WASM instance — single-user only; multi-writer stays server/PostgreSQL."
+      ],
+      "externalValidation": "Factory + persistence + migrations bundle proven by @gr/data + @gr/ui vitest; live browser E2E in-session (engine init + seed + persist + reload)."
     }
   ]
 }

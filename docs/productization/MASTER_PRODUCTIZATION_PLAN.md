@@ -301,10 +301,22 @@ specs where applicable. No claim without evidence.
   7 `@gr/data` parity tests (incl. the FULL real schema migrating on WASM) and 1 `@gr/application`
   test where `postDocument` on `fromSqlJs` writes journal + stock + fiscal atomically with a
   balanced journal. The SAME engine as the server runs on a browser executor.
-- Not re-exported from the index (WASM stays out of every bundle; `build:web` OK). This is a
-  SPIKE — the UI integration (async provider init in `data-context` LOCAL mode, bundling
-  `db/migrations` for the browser, IndexedDB persistence across reloads) is the next step,
-  after which the same ledger reads + `reconcileSigur` apply offline.
+- Not re-exported from the index (WASM stays out of every bundle; `build:web` OK).
+
+### WIRING-12 — local-sqlite mode: persistent in-browser SQLite provider — **done**
+- Completes WIRING-11: a new `local-sqlite` deployment mode runs a REAL, PERSISTENT SQLite DB
+  in the browser (sql.js/WASM) instead of the ephemeral in-memory demo. `creeazaProviderLocalSqlite`
+  inits WASM → loads the persisted snapshot → migrates (idempotent) → seeds on first run →
+  `createSqlProvider`, persisting the whole DB to IndexedDB (debounced) and reloading it on init.
+  Migrations are bundled (`MIGRATII_INCORPORATE`, generated + drift-tested) so the browser can
+  migrate without fs. `data-context` builds the provider async (loading gate) with in-memory
+  fallback; Setari exposes the option; sql.js lazy-loads only in this mode.
+- Verified live (local-sqlite, no server): the WASM engine initialized in-browser, migrated the
+  real schema, seeded demo, and persisted a 471 KB snapshot to IndexedDB; the app reads all data
+  from the SQLite provider; a reload loads from the snapshot (no re-seed). Persistence round-trip
+  unit-tested. NEXT: the local COMMAND engine (post/reverse via `@gr/application` on the local
+  exec) + local ledger reports, then `reconcileSigur` — so local-sqlite runs the full engine
+  offline, not a CRUD flip.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
