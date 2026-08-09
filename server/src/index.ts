@@ -3,7 +3,9 @@ import { genereazaDecontDinRegistre } from '@gr/application';
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
 import {
+  type CursorDocument,
   type Repository,
+  interogheazaDocumente,
   listeazaMiscariStocPersistate,
   listeazaNoteContabilePersistate,
   listeazaSolduriStoc,
@@ -294,6 +296,32 @@ async function main() {
           },
         );
         return send(200, decont);
+      }
+
+      // GET /reports/documents: lista de documente KEYSET-paginata (RK-13) — filtrare
+      // + paginare pe SERVER (indexata, LIMIT marginit), scopata pe firma sesiunii,
+      // in loc de a aduce toata tabela in client si a o filtra acolo. Cursor prin
+      // (cursor_data, cursor_id); `urmatorCursor` in raspuns cand mai exista o pagina.
+      if (resource === 'reports' && id === 'documents') {
+        if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+        const q = url.searchParams;
+        const cursorData = q.get('cursor_data');
+        const cursorId = q.get('cursor_id');
+        const dupa: CursorDocument | undefined =
+          cursorData && cursorId ? { data: cursorData, id: cursorId } : undefined;
+        const pagina = await interogheazaDocumente(
+          exec,
+          {
+            firmaId: sesiune.firmaId,
+            tip: q.get('tip') || undefined,
+            stare: q.get('stare') || undefined,
+            partenerId: q.get('partener_id') || undefined,
+            de: q.get('de') || undefined,
+            pana: q.get('pana') || undefined,
+          },
+          { limita: q.get('limita') ? Number(q.get('limita')) : undefined, dupa },
+        );
+        return send(200, pagina);
       }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu

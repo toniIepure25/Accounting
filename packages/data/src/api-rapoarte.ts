@@ -1,5 +1,6 @@
 import type { DecontDinEvenimente, MiscareStoc, NotaContabila, SoldStoc } from '@gr/core-domain';
 import type { FurnizorToken } from './api-repo.js';
+import type { FiltruDocumente, PaginaDocumente, PaginareKeyset } from './document-query.js';
 
 /** Rapoartele de stoc citite din registru: miscari (fise/rulaje) + solduri materializate. */
 export interface RaportStoc {
@@ -20,6 +21,8 @@ export interface ClientRapoarte {
   stoc(): Promise<RaportStoc>;
   /** Decontul de TVA (baza D300) din evenimentele fiscale persistate, pe o perioada. */
   decont(interval?: { de?: string; pana?: string }): Promise<DecontDinEvenimente>;
+  /** O pagina de documente (keyset), filtrata + paginata pe server (RK-13). */
+  documente(filtru?: FiltruDocumente, paginare?: PaginareKeyset): Promise<PaginaDocumente>;
 }
 
 export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): ClientRapoarte {
@@ -57,6 +60,23 @@ export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): 
       return fetch(`${base}/reports/decont${qs ? `?${qs}` : ''}`, { headers: headers() }).then(
         ok,
       ) as Promise<DecontDinEvenimente>;
+    },
+    documente: (filtru = {}, paginare = {}) => {
+      const q = new URLSearchParams();
+      if (filtru.tip) q.set('tip', filtru.tip);
+      if (filtru.stare) q.set('stare', filtru.stare);
+      if (filtru.partenerId) q.set('partener_id', filtru.partenerId);
+      if (filtru.de) q.set('de', filtru.de);
+      if (filtru.pana) q.set('pana', filtru.pana);
+      if (paginare.limita) q.set('limita', String(paginare.limita));
+      if (paginare.dupa) {
+        q.set('cursor_data', paginare.dupa.data);
+        q.set('cursor_id', paginare.dupa.id);
+      }
+      const qs = q.toString();
+      return fetch(`${base}/reports/documents${qs ? `?${qs}` : ''}`, { headers: headers() }).then(
+        ok,
+      ) as Promise<PaginaDocumente>;
     },
   };
 }

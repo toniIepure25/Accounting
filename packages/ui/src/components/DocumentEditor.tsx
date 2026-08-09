@@ -15,8 +15,8 @@ import {
 import type { Document } from '@gr/core-domain';
 import { CheckCircle2, Pencil, Plus, Trash2, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useCollection } from '../hooks/useCollection.js';
 import { useComenzi } from '../hooks/useComenzi.js';
+import { useDocumenteTip } from '../hooks/useDocumenteTip.js';
 import { useAuth } from '../lib/auth-context.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useData } from '../lib/data-context.js';
@@ -78,7 +78,12 @@ export function DocumentEditor(cfg: DocConfig) {
   // Inchidere de perioada (vezi Firma.perioadaBlocataPanaLa): se aplica
   // NECONDITIONAT, inclusiv pentru admin — se ridica explicit din Setari.
   const blocajGlobal = useMemo(() => celMaiRecentBlocaj(firme), [firme]);
-  const documente = useCollection(db.documente);
+  // Lista documentelor de acest tip: in mod retea, interogare KEYSET pe server
+  // (filtrare pe tip + firma, pagini marginite indexate — RK-13), nu list()+filtru
+  // in client. `documenteSursa` (pentru legatura NIR→factura) vine dintr-o a doua
+  // interogare pe tipul-sursa, doar cand exista.
+  const documente = useDocumenteTip(cfg.tip);
+  const documenteSursaHook = useDocumenteTip(cfg.linkSursaTip, { stare: 'validat' });
   const [parteneri, setParteneri] = useState<Partener[]>([]);
   const [produse, setProduse] = useState<Produs[]>([]);
   const [gestiuni, setGestiuni] = useState<{ id: string; cod: string; denumire: string }[]>([]);
@@ -91,10 +96,10 @@ export function DocumentEditor(cfg: DocConfig) {
       .then((g) => setGestiuni(g.map((x) => ({ id: x.id, cod: x.cod, denumire: x.denumire }))));
   }, [db]);
 
+  // `documente.rows` e deja filtrat pe cfg.tip (server sau local) — doar sortare.
   const docs = useMemo(
-    () =>
-      documente.rows.filter((d) => d.tip === cfg.tip).sort((a, b) => b.data.localeCompare(a.data)),
-    [documente.rows, cfg.tip],
+    () => [...documente.rows].sort((a, b) => b.data.localeCompare(a.data)),
+    [documente.rows],
   );
 
   const partenerOptions = useMemo(() => {
@@ -131,15 +136,9 @@ export function DocumentEditor(cfg: DocConfig) {
    * nu amestecam un an nou (din dataDoc schimbata) cu un numar alocat sub anul vechi. */
   const [anOriginal, setAnOriginal] = useState<number | null>(null);
 
-  // documente.rows contine deja TOATE documentele (nu doar cfg.tip) — nicio
-  // cerere separata catre server nu e necesara, doar o filtrare locala.
-  const documenteSursa = useMemo(
-    () =>
-      cfg.linkSursaTip
-        ? documente.rows.filter((d) => d.tip === cfg.linkSursaTip && d.stare === 'validat')
-        : [],
-    [cfg.linkSursaTip, documente.rows],
-  );
+  // Documentele-sursa (ex. NIR-uri validate pentru potrivirea 3-way) vin din a
+  // doua interogare pe tipul-sursa; hook-ul intoarce [] cand nu e configurat.
+  const documenteSursa = documenteSursaHook.rows;
 
   const reset = () => {
     setEditId(null);

@@ -129,4 +129,21 @@ describe('createReportsClient — client de rapoarte persistate', () => {
     const [url] = fetchSpy.mock.calls[0]!;
     expect(url).toBe('http://srv:8787/reports/decont?de=2026-02-01&pana=2026-02-28');
   });
+
+  it('documente: GET /reports/documents cu filtru tip + cursor keyset', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(raspuns(200, { randuri: [], urmatorCursor: null }));
+    const client = createReportsClient('http://srv:8787', () => 'tok');
+
+    await client.documente(
+      { tip: 'factura_vanzare', stare: 'validat' },
+      { limita: 500, dupa: { data: '2026-02-10', id: 'abc' } },
+    );
+
+    const [url] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe(
+      'http://srv:8787/reports/documents?tip=factura_vanzare&stare=validat&limita=500&cursor_data=2026-02-10&cursor_id=abc',
+    );
+  });
 });
