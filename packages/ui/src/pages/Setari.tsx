@@ -23,6 +23,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Field, Modal, Select } from '../components/controls.js';
 import { Badge, Button, Card, Input, PageHeader } from '../components/ui.js';
+import { useAdmin } from '../hooks/useAdmin.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useData } from '../lib/data-context.js';
 import { downloadText } from '../lib/export.js';
@@ -49,6 +50,7 @@ export function SetariPage() {
   const [aiUrl, setAiUrl] = useState(() => localStorage.getItem('gr-ai-url') ?? '');
   const [docLegal, setDocLegal] = useState<DocumentLegal | null>(null);
   const db = useData();
+  const admin = useAdmin();
   const fisierRef = useRef<HTMLInputElement>(null);
   const { firmaCurenta, reincarca: reincarcaFirme } = useFirma();
   const [dataInchidere, setDataInchidere] = useState('');
@@ -140,10 +142,18 @@ export function SetariPage() {
   };
 
   const descarcaBackup = async () => {
-    const snapshot = await exportDate(db);
-    const fisier = `backup-${new Date().toISOString().slice(0, 10)}.json`;
-    downloadText(fisier, JSON.stringify(snapshot, null, 2), 'application/json');
-    toast.success(`Backup descarcat: ${fisier}`);
+    try {
+      // Mod retea: instantaneu COMPLET al bazei de pe server (incl. registrele —
+      // jurnal, stoc, evenimente fiscale), verificat prin proba de restaurare.
+      // Mod local: exportul DataProvider (nomenclatoare + documente + casa + audit).
+      const snapshot = admin ? await admin.backup() : await exportDate(db);
+      const tip = admin ? 'complet' : 'date';
+      const fisier = `backup-${tip}-${new Date().toISOString().slice(0, 10)}.json`;
+      downloadText(fisier, JSON.stringify(snapshot, null, 2), 'application/json');
+      toast.success(`Backup descarcat: ${fisier}`);
+    } catch (e) {
+      toast.error(`Backup esuat: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const restaureazaBackup = async (fisier: File) => {
@@ -158,13 +168,20 @@ export function SetariPage() {
     try {
       const text = await fisier.text();
       const snapshot = JSON.parse(text);
-      const r = await importDate(db, snapshot, 'inlocuieste');
+      // Mod retea: restaurare COMPLETA pe server (atomica, verificata — jurnalul
+      // trebuie sa ramana echilibrat, altfel rollback). Mod local: importul DataProvider.
+      let mesaj: string;
+      if (admin) {
+        const r = await admin.restaureaza(snapshot);
+        mesaj = `Restaurat pe server: ${r.tabeleRestaurate} tabele, ${r.randuriRestaurate} randuri.`;
+      } else {
+        const r = await importDate(db, snapshot, 'inlocuieste');
+        mesaj = `Restaurat: ${r.tabeleRestaurate} tabele, ${r.inregistrariRestaurate} inregistrari.`;
+      }
       // Nu reincarcam pagina: in modul local (SQLite) datele sunt persistente,
       // dar in modul demo (in-memory) un reload ar sterge tocmai ce am restaurat.
       // Ecranele deja deschise cu liste isi reincarca datele la urmatoarea navigare.
-      toast.success(
-        `Restaurat: ${r.tabeleRestaurate} tabele, ${r.inregistrariRestaurate} inregistrari. Navigheaza catre alt ecran pentru a vedea datele restaurate.`,
-      );
+      toast.success(`${mesaj} Navigheaza catre alt ecran pentru a vedea datele restaurate.`);
     } catch (e) {
       toast.error(`Eroare la restaurare: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -566,8 +583,9 @@ export function SetariPage() {
           <DatabaseBackup className="h-5 w-5 text-primary" /> Backup si restaurare
         </h3>
         <p className="mb-4 text-sm text-fg-muted">
-          Descarca un backup complet (toate nomenclatoarele, documentele, casa si jurnalul de audit)
-          intr-un fisier JSON, sau restaureaza dintr-un backup anterior.
+          {admin
+            ? 'Descarca un backup COMPLET al bazei de pe server — nomenclatoare, documente si toate registrele (jurnal contabil, stoc, evenimente fiscale) — verificat prin proba de restaurare, intr-un fisier JSON. Restaurarea inlocuieste atomic baza serverului.'
+            : 'Descarca un backup (nomenclatoare, documente, casa si jurnalul de audit) intr-un fisier JSON, sau restaureaza dintr-un backup anterior.'}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={descarcaBackup}>

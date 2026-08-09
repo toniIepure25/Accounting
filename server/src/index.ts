@@ -8,8 +8,11 @@ import {
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
 import {
+  type BackupBaza,
   type CursorDocument,
   type Repository,
+  backupVerificat,
+  importBazaSql,
   interogheazaDocumente,
   listeazaMiscariStocPersistate,
   listeazaNoteContabilePersistate,
@@ -27,7 +30,7 @@ import {
   verificaCerere,
 } from './auth.js';
 import { COMENZI, type NumeComanda, ruleazaComanda } from './commands.js';
-import { creeazaServerDb } from './db.js';
+import { creeazaScratchMigrat, creeazaServerDb } from './db.js';
 import { incarcaLicenta, maiIncapeUtilizatorActiv } from './licenta.js';
 import { idCerere, log } from './log.js';
 
@@ -257,6 +260,38 @@ async function main() {
         const body = (await readBody(req)) as any;
         const rez = await ruleazaComanda(exec, id, body ?? {}, sesiune.nume);
         return send(rez.status, rez.body);
+      }
+
+      // Administrare: backup/restore la nivel de BAZA (incl. registrele — jurnal,
+      // stoc, evenimente fiscale), spre deosebire de exportul pe DataProvider care
+      // pierde registrele. Doar `setari.administrare`. Primitivele (backupVerificat/
+      // importBazaSql) sunt specifice SQLite (probeaza restaurarea intr-o baza-
+      // scratch migrata) — pe PostgreSQL se foloseste CLI-ul/pg_dump (501 aici).
+      if (resource === 'admin' && (id === 'backup' || id === 'restore')) {
+        if (!poateAccesa(sesiune.rol, 'setari.administrare')) {
+          return send(403, { error: 'acces interzis' });
+        }
+        if (persistent) {
+          return send(501, {
+            error: 'Backup/restore pe PostgreSQL se face prin CLI (npm run backup) / pg_dump.',
+          });
+        }
+        if (id === 'backup') {
+          if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+          // Instantaneu COMPLET, probat prin restaurare intr-o baza-scratch inainte
+          // de a-l servi — un backup pe care nu l-ai test-restaurat nu e backup.
+          const snapshot = await backupVerificat(exec, creeazaScratchMigrat);
+          return send(200, snapshot);
+        }
+        // POST /admin/restore: inlocuieste ATOMIC continutul bazei cu instantaneul,
+        // verificand ca jurnalul ramane echilibrat dupa restaurare (altfel rollback).
+        if (req.method !== 'POST') return send(405, { error: 'metoda nepermisa' });
+        const snapshot = (await readBody(req)) as BackupBaza | null;
+        if (!snapshot?.tabele || typeof snapshot.tabele !== 'object') {
+          return send(400, { error: 'instantaneu invalid (lipseste `tabele`)' });
+        }
+        const rezultat = await importBazaSql(exec, snapshot, { verificaIntegritatea: true });
+        return send(200, rezultat);
       }
 
       // Rapoarte citite din REGISTRELE persistente (sursa de adevar), nu

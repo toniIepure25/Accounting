@@ -27,6 +27,17 @@ export function incarcaMigratii(): Migration[] {
     }));
 }
 
+/**
+ * Produce un executor pe o baza SQLite in-memory GOALA dar deja migrata la
+ * schema curenta. Folosit ca „scratch" de `backupVerificat` ca sa PROBEZE
+ * restaurarea unui backup inainte de a-l servi (un backup netestat nu e backup).
+ */
+export async function creeazaScratchMigrat(): Promise<SqlExecutor> {
+  const exec = fromBetterSqlite(new Database(':memory:'));
+  await migrate(exec, incarcaMigratii());
+  return exec;
+}
+
 export interface ServerDb {
   provider: DataProvider;
   /**
