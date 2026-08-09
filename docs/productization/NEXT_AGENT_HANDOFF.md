@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `a45f87d` (WIRING-8 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `1b73d7b` (WIRING-9 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -92,6 +92,18 @@ planning or repeat earlier phases.
   D390 keeps only the DE intracom partener). NOTE: the network-mode effect refetches a few
   times on mount as `rows`/`parteneri` settle (idempotent GETs, harmless) — a small cleanup
   would drop `rows`/`parteneri` from the network branch's deps.
+- **UI/transport wiring, slice 9 (WIRING-9)**: the offline COMMAND queue is wired into the
+  command transport — `@gr/data createOfflineCommandClient` (`packages/data/src/offline-comenzi.ts`)
+  wraps the command client with the tested `@gr/sync` offline-queue primitives; when the
+  server is unreachable the command (post/reverse/approve/cancel) is enqueued (localStorage
+  `gr-coada-comenzi`) with a stable idempotency key + `ComandaInCoadaError`, and replayed on
+  reconnect (`window 'online'` + mount). `useComenzi` returns the offline client + auto-replays;
+  `DocumentEditor` shows an info toast on queue (`esteInCoada`). +8 @gr/data tests + verified
+  LIVE (with api-server stopped, a storno enqueued the exact reverse-document command). NOTE:
+  only COMMANDS queue — new-draft CRUD in network mode still needs the server; `reconcileSigur`
+  (conflict-aware DATA reconciliation, RK-12) needs local persistence first. Reconnect-replay
+  is unit-tested only (the demo server resets its DB + session secret on restart, so a live
+  successful replay isn't reproducible in this harness).
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -117,8 +129,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **392 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 81, application 60, server 22, ui 22,
+- `npx turbo run test --force` → **400 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 89, application 60, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -143,10 +155,11 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
   the document list + source picker read the keyset query (`GET /reports/documents`, WIRING-6);
   the SAF-T (D406) XML export reads the persisted journal (`GET /reports/saft`, WIRING-7);
   D394/D390 are computed server-side, firma-scoped (`GET /reports/d394` + `/reports/d390`,
-  WIRING-8). Still generic/not-yet-wired: the safe reconciliation + offline command queue
-  (Phase 12) aren't in the client sync loop; no backup/restore UI action yet. All of the
-  wired reads apply only in NETWORK mode — local/demo (memory, no engine) still recomputes,
-  so a browser SQLite engine for local mode would unify the two paths.
+  WIRING-8); the offline COMMAND queue is wired into the command transport (`createOfflineCommandClient`,
+  WIRING-9). Still generic/not-yet-wired: `reconcileSigur` (conflict-aware DATA reconciliation,
+  Phase 12) isn't in the client sync loop (needs local persistence first); no backup/restore
+  UI action yet. All of the wired reads apply only in NETWORK mode — local/demo (memory, no
+  engine) still recomputes, so a browser SQLite engine for local mode would unify the two paths.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -162,13 +175,13 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 ## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 + P17-R1 done)
 Remaining build directions the user selected:
 - **UI/transport wiring** — POST + STORNO + accounting reports + STOCK reports + D300
-  decont + document LIST + SAF-T XML + D394/D390 are wired (WIRING-2..8). Next slices:
-  (1) the offline command queue + safe reconciliation (`reconcileSigur`, `comenziDeReluat`
-  in `@gr/sync`) into the client sync loop — the biggest remaining Phase-12 UI gap;
-  (2) a backup/restore action in the UI (`backupVerificat`/`importBazaSql` ready — likely a
-  server `POST /admin/backup` returning the snapshot, restore gated carefully); (3) the
-  fiscal_events-native rewrite of D394/D390 (working drafts today); (4) optionally a browser
-  SQLite engine for LOCAL mode so the same ledger-reads apply offline. Verify with the
+  decont + document LIST + SAF-T XML + D394/D390 + offline COMMAND queue are wired
+  (WIRING-2..9). Next slices: (1) a backup/restore action in the UI
+  (`backupVerificat`/`importBazaSql` ready — likely a server `POST /admin/backup` returning
+  the snapshot, restore gated carefully) — the smallest remaining, most self-contained slice;
+  (2) a browser SQLite engine for LOCAL mode so the same ledger-reads (and the offline data
+  entry that `reconcileSigur` needs) apply offline — the big architectural unlock;
+  (3) the fiscal_events-native rewrite of D394/D390 (working drafts today). Verify with the
   Browser preview (`preview_start` `api-server` + `ui-dev`, LAN mode; login admin/admin123)
   per the run skill.
   - NOTE 1: restarting/reloading `api-server` (tsx watch) resets the in-memory demo DB +

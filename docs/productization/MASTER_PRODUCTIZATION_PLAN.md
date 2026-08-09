@@ -264,9 +264,22 @@ specs where applicable. No claim without evidence.
   client no longer pulls/aggregates the full cross-firma document + partener tables.
 - Verified live (LAN mode): `/reports/d394` (200: livrari + achizitii grouped on partener)
   and `/reports/d390` (200: only the DE intracom partener) rendered on both pages.
-  Remaining UI wiring: offline queue + safe reconciliation, backup/restore action.
   D394/D390 stay working drafts (fiscal_events-native rewrite is a follow-up); the official
   ANAF declaration format stays an external filing gate.
+
+### WIRING-9 — offline command queue wired into the client command transport — **done**
+- `@gr/data createOfflineCommandClient` wraps the command client with the tested `@gr/sync`
+  offline-queue primitives: when the server is unreachable, the authoritative command
+  (post/reverse/approve/cancel) is enqueued (localStorage) with a stable idempotency key and
+  `ComandaInCoadaError` is raised; on reconnect (`window 'online'` + mount) the queue replays.
+  Phase-4 server idempotency means a double replay never double-posts. Business errors (4xx)
+  still surface — only transport failures queue. `useComenzi` returns the offline client +
+  auto-replays; `DocumentEditor` shows an info toast when a command is queued.
+- Verified live (LAN mode): online post/storno unchanged; with the api-server STOPPED, a
+  storno enqueued the exact `reverse-document` command in `gr-coada-comenzi`. Replay +
+  idempotency covered by 8 unit tests (the demo server resets its DB + secret on restart, so
+  a live successful replay isn't reproducible). Remaining UI wiring: a backup/restore action;
+  `reconcileSigur` (conflict-aware DATA reconciliation) needs local persistence first.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

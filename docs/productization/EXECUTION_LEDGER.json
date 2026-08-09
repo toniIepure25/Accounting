@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 392,
+      "total": 400,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..8: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML, D394/D390 server-side); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..9: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML, D394/D390 server-side, offline command queue); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 81,
+        "data": 89,
         "application": 60,
         "server": 22,
         "license": 22,
@@ -1148,6 +1148,32 @@
         "Remaining UI: offline command queue + safe reconciliation not in the client sync loop; no backup/restore UI action yet."
       ],
       "externalValidation": "Official ANAF D394/D390 declaration format/validator = external gate. Live browser E2E in-session only."
+    },
+    {
+      "id": "WIRING-9",
+      "phase": 15,
+      "title": "Offline command queue wired into the client command transport",
+      "status": "done",
+      "files": [
+        "packages/data/src/offline-comenzi.ts",
+        "packages/data/src/index.ts",
+        "packages/ui/src/hooks/useComenzi.ts",
+        "packages/ui/src/components/DocumentEditor.tsx",
+        "packages/data/package.json"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/offline-comenzi.test.ts (8 tests)",
+        "live browser E2E (LAN mode): offline enqueue"
+      ],
+      "commitSha": "1b73d7b",
+      "acceptanceEvidence": "Authoritative commands (post/reverse/approve/cancel) were fire-and-fail on a flaky connection; the tested @gr/sync offline-queue primitives were unwired. They now go through @gr/data createOfflineCommandClient which wraps the command client: when the server is unreachable the command is enqueued (persisted in localStorage via stocatorStorage) with a stable idempotency key and ComandaInCoadaError is raised; on reconnect (window 'online' + on mount) the queue is replayed via comenziDeReluat, and the server's Phase-4 idempotency means a double replay never double-posts. Business errors (4xx) still surface — only transport failures queue. useComenzi returns the offline client and auto-replays, toasting sent/rejected counts; DocumentEditor validate/storno/save catch ComandaInCoadaError -> info toast. +8 @gr/data tests. Suite 392->400 passed / 1 skipped. Verified LIVE (LAN mode): online post/storno unchanged; with api-server STOPPED a storno enqueued the exact reverse-document command in gr-coada-comenzi (idempotency key reverse-document:<docId>:-:2026-08-09:, payload, executate:[]).",
+      "risks": [
+        "Only COMMANDS are queued; writing a NEW draft in network mode still needs the server (no local data persistence in network mode) — full offline data entry needs a browser SQLite engine (separate work). The win is post/storno of an ALREADY-persisted document surviving intermittent connectivity without double-posting.",
+        "Reconnect-replay is unit-tested, not live-verified: the in-memory demo server resets its DB + session secret on restart, so a live SUCCESSFUL replay isn't reproducible in this harness.",
+        "reconcileSigur (conflict-aware DATA reconciliation, RK-12) is NOT yet in the client sync loop — it needs a local dataset to reconcile against; applies once local persistence lands."
+      ],
+      "externalValidation": "Offline replay/idempotency proven by @gr/data + @gr/sync unit tests; live browser E2E in-session only (enqueue path)."
     }
   ]
 }
