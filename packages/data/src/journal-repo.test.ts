@@ -114,4 +114,19 @@ describe('createReportsClient — client de rapoarte persistate', () => {
     expect(url).toBe('http://srv:8787/reports/journal');
     expect((init?.headers as Record<string, string>).authorization).toBe('Bearer tok');
   });
+
+  it('decont: GET /reports/decont cu perioada in query', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(raspuns(200, { tvaColectataBani: 420, dePlataBani: 420 }));
+    const client = createReportsClient('http://srv:8787', () => 'tok');
+
+    const d = (await client.decont({ de: '2026-02-01', pana: '2026-02-28' })) as {
+      dePlataBani: number;
+    };
+
+    expect(d.dePlataBani).toBe(420);
+    const [url] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe('http://srv:8787/reports/decont?de=2026-02-01&pana=2026-02-28');
+  });
 });

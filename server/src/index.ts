@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { genereazaDecontDinRegistre } from '@gr/application';
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
 import {
@@ -275,6 +276,24 @@ async function main() {
           listeazaSolduriStoc(exec, sesiune.firmaId),
         ]);
         return send(200, { miscari, solduri });
+      }
+
+      // GET /reports/decont?de=&pana=: decontul de TVA (baza D300) din evenimentele
+      // fiscale persistate, scopat pe firma sesiunii — fara dubla numarare NIR.
+      if (resource === 'reports' && id === 'decont') {
+        if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+        if (!poateAccesa(sesiune.rol, 'contabilitate.vizualizare')) {
+          return send(403, { error: 'acces interzis' });
+        }
+        const decont = await genereazaDecontDinRegistre(
+          { exec, actor: sesiune.nume },
+          {
+            de: url.searchParams.get('de') || undefined,
+            pana: url.searchParams.get('pana') || undefined,
+            firmaId: sesiune.firmaId,
+          },
+        );
+        return send(200, decont);
       }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu

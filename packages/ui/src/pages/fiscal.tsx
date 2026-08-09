@@ -16,6 +16,7 @@ import { type Column, DataTable } from '../components/DataTable.js';
 import { Field, Modal, Select } from '../components/controls.js';
 import { Badge, Button, Card, Input, PageHeader } from '../components/ui.js';
 import { useCollection } from '../hooks/useCollection.js';
+import { useRapoarte } from '../hooks/useRapoarte.js';
 import { useData } from '../lib/data-context.js';
 import { downloadText, printHtml } from '../lib/export.js';
 import { useFirma } from '../lib/firma-context.js';
@@ -255,25 +256,55 @@ function d300Html(d: ReturnType<typeof decontTVADetaliat>, de: string, pana: str
     </body></html>`;
 }
 
+const DECONT_GOL = {
+  tvaColectataBani: 0,
+  tvaDeductibilaBani: 0,
+  dePlataBani: 0,
+  deRecuperatBani: 0,
+  colectataPeCota: [] as { cotaProcent: number; bazaBani: number; tvaBani: number }[],
+  deductibilaPeCota: [] as { cotaProcent: number; bazaBani: number; tvaBani: number }[],
+};
+
 export function DecontTvaPage() {
   const db = useData();
+  const rapoarte = useRapoarte();
   const { rows } = useCollection(db.documente);
   const [linii, setLinii] = useState<DocumentLinie[]>([]);
   const [de, setDe] = useState('');
   const [pana, setPana] = useState('');
+  // Decontul din registrul de evenimente fiscale (mod retea); null pana la incarcare.
+  const [decontPersistat, setDecontPersistat] = useState<typeof DECONT_GOL | null>(null);
   useEffect(() => {
+    if (rapoarte) return;
     db.documenteLinii.list().then(setLinii);
-  }, [db]);
-  const d = useMemo(
+  }, [db, rapoarte]);
+  useEffect(() => {
+    if (!rapoarte) {
+      setDecontPersistat(null);
+      return;
+    }
+    let activ = true;
+    rapoarte
+      .decont({ de: de || undefined, pana: pana || undefined })
+      .then((r) => activ && setDecontPersistat(r))
+      .catch(() => activ && setDecontPersistat(DECONT_GOL));
+    return () => {
+      activ = false;
+    };
+  }, [rapoarte, de, pana]);
+  // Mod retea: decontul persistat (fiscal_events, fara dubla numarare NIR). Mod
+  // local: recalculat din documente. Aceeasi forma, deci UI-ul e neschimbat.
+  const dRecalculat = useMemo(
     () => decontTVADetaliat(rows, linii, { de: de || undefined, pana: pana || undefined }),
     [rows, linii, de, pana],
   );
+  const d = rapoarte ? (decontPersistat ?? DECONT_GOL) : dRecalculat;
 
   return (
     <div>
       <PageHeader
         title="Decont TVA (D300)"
-        subtitle="TVA colectata vs. deductibila, defalcata pe cote, din documentele validate"
+        subtitle="TVA colectata vs. deductibila, defalcata pe cote, din evenimentele fiscale (fara dubla numarare NIR)"
         actions={
           <Button variant="secondary" onClick={() => printHtml(d300Html(d, de, pana))}>
             <Printer className="h-4 w-4" /> Printeaza / PDF
