@@ -23,6 +23,7 @@ import { useFirma } from '../lib/firma-context.js';
 import * as fmt from '../lib/format.js';
 import { antetFirmaHtml } from '../lib/print-branding.js';
 import { csvField, escapeHtml } from '../lib/safe-output.js';
+import { useToast } from '../lib/toast.js';
 
 /**
  * Datele vanzatorului pentru e-Factura/factura tiparita/SAF-T: firma curenta
@@ -580,33 +581,55 @@ export function D390Page() {
 
 export function SaftPage() {
   const db = useData();
+  const rapoarte = useRapoarte();
   const { firmaCurenta } = useFirma();
+  const toast = useToast();
   const [luna, setLuna] = useState(String(new Date().getMonth() + 1));
   const [an, setAn] = useState(String(new Date().getFullYear()));
 
   const genereaza = async () => {
-    const [documente, parteneri, produse] = await Promise.all([
-      db.documente.list(),
-      db.parteneri.list(),
-      db.produse.list(),
-    ]);
-    const xml = genereazaSaftXML({
-      companie: {
-        nume: firmaCurenta?.denumire || 'Firma nesetata',
-        cui: firmaCurenta?.cui ?? '',
-        perioadaLuna: Number(luna),
-        perioadaAn: Number(an),
-      },
-      parteneri,
-      produse,
-      documente,
-    });
-    downloadText(`SAF-T_D406_${an}_${luna}.xml`, xml);
+    try {
+      // Mod retea: XML-ul e generat pe SERVER din registrul contabil persistat
+      // (partida dubla, reconciliat) — nu recompus din documente in client.
+      if (rapoarte) {
+        const rez = await rapoarte.saft({ an: Number(an), luna: Number(luna) });
+        downloadText(`SAF-T_D406_${an}_${luna}.xml`, rez.xml);
+        toast[rez.reconciliere.echilibrat ? 'success' : 'error'](
+          rez.reconciliere.echilibrat
+            ? 'SAF-T generat din registru — General Ledger echilibrat.'
+            : 'Atentie: General Ledger DEZECHILIBRAT in perioada aleasa.',
+        );
+        return;
+      }
+      // Mod local (fara motor): construire din documente, ca inainte.
+      const [documente, parteneri, produse] = await Promise.all([
+        db.documente.list(),
+        db.parteneri.list(),
+        db.produse.list(),
+      ]);
+      const xml = genereazaSaftXML({
+        companie: {
+          nume: firmaCurenta?.denumire || 'Firma nesetata',
+          cui: firmaCurenta?.cui ?? '',
+          perioadaLuna: Number(luna),
+          perioadaAn: Number(an),
+        },
+        parteneri,
+        produse,
+        documente,
+      });
+      downloadText(`SAF-T_D406_${an}_${luna}.xml`, xml);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Generarea SAF-T a esuat.');
+    }
   };
 
   return (
     <div>
-      <PageHeader title="SAF-T (D406)" subtitle="Fisierul standard de audit fiscal — export XML" />
+      <PageHeader
+        title="SAF-T (D406)"
+        subtitle="Fisierul standard de audit fiscal — export XML din registrul contabil persistat (reconciliat)"
+      />
       <Card className="flex flex-wrap items-end gap-4 p-5">
         <Field label="Luna">
           <Select

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { genereazaDecontDinRegistre } from '@gr/application';
+import { genereazaDecontDinRegistre, genereazaSaftDinRegistre } from '@gr/application';
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
 import {
@@ -322,6 +322,38 @@ async function main() {
           { limita: q.get('limita') ? Number(q.get('limita')) : undefined, dupa },
         );
         return send(200, pagina);
+      }
+
+      // GET /reports/saft?an=&luna=: fisierul SAF-T (D406) generat din registrul
+      // contabil PERSISTAT (partida dubla), reconciliat, scopat pe firma sesiunii —
+      // nu recompus din documente in client. Intoarce { xml, reconciliere }.
+      if (resource === 'reports' && id === 'saft') {
+        if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+        if (!poateAccesa(sesiune.rol, 'contabilitate.vizualizare')) {
+          return send(403, { error: 'acces interzis' });
+        }
+        const an = Number(url.searchParams.get('an')) || new Date().getFullYear();
+        const luna = Number(url.searchParams.get('luna')) || new Date().getMonth() + 1;
+        const ll = String(luna).padStart(2, '0');
+        const de = `${an}-${ll}-01`;
+        const pana = `${an}-${ll}-${String(new Date(an, luna, 0).getDate()).padStart(2, '0')}`;
+        // Identitatea firmei vine din sesiune (nu din client), autoritar.
+        const firma = sesiune.firmaId ? await provider.firme.getById(sesiune.firmaId) : null;
+        const rezultat = await genereazaSaftDinRegistre(
+          { exec, actor: sesiune.nume },
+          {
+            companie: {
+              nume: firma?.denumire || 'Firma nesetata',
+              cui: firma?.cui || '',
+              perioadaLuna: luna,
+              perioadaAn: an,
+            },
+            de,
+            pana,
+            firmaId: sesiune.firmaId,
+          },
+        );
+        return send(200, rezultat);
       }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu

@@ -8,6 +8,12 @@ export interface RaportStoc {
   solduri: SoldStoc[];
 }
 
+/** Fisierul SAF-T (D406) generat din registru + reconcilierea General Ledger. */
+export interface RaportSaft {
+  xml: string;
+  reconciliere: { totalDebitBani: number; totalCreditBani: number; echilibrat: boolean };
+}
+
 /**
  * Client pentru RAPOARTELE citite din registrele persistente ale serverului
  * (modurile retea/cloud). Ex.: notele contabile vin din `journal_entries` +
@@ -23,6 +29,8 @@ export interface ClientRapoarte {
   decont(interval?: { de?: string; pana?: string }): Promise<DecontDinEvenimente>;
   /** O pagina de documente (keyset), filtrata + paginata pe server (RK-13). */
   documente(filtru?: FiltruDocumente, paginare?: PaginareKeyset): Promise<PaginaDocumente>;
+  /** Fisierul SAF-T (D406) pe luna/an, din registrul contabil persistat. */
+  saft(perioada: { an: number; luna: number }): Promise<RaportSaft>;
 }
 
 export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): ClientRapoarte {
@@ -78,5 +86,9 @@ export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): 
         ok,
       ) as Promise<PaginaDocumente>;
     },
+    saft: ({ an, luna }) =>
+      fetch(`${base}/reports/saft?an=${an}&luna=${luna}`, { headers: headers() }).then(
+        ok,
+      ) as Promise<RaportSaft>,
   };
 }

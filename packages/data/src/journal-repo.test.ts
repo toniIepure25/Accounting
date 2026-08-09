@@ -146,4 +146,24 @@ describe('createReportsClient — client de rapoarte persistate', () => {
       'http://srv:8787/reports/documents?tip=factura_vanzare&stare=validat&limita=500&cursor_data=2026-02-10&cursor_id=abc',
     );
   });
+
+  it('saft: GET /reports/saft?an=&luna=, intoarce xml + reconciliere', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      raspuns(200, {
+        xml: '<AuditFile/>',
+        reconciliere: { totalDebitBani: 100, totalCreditBani: 100, echilibrat: true },
+      }),
+    );
+    const client = createReportsClient('http://srv:8787', () => 'tok');
+
+    const r = (await client.saft({ an: 2026, luna: 2 })) as {
+      xml: string;
+      reconciliere: { echilibrat: boolean };
+    };
+
+    expect(r.xml).toBe('<AuditFile/>');
+    expect(r.reconciliere.echilibrat).toBe(true);
+    const [url] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe('http://srv:8787/reports/saft?an=2026&luna=2');
+  });
 });
