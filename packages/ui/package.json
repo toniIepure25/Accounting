@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@gr/ai": "*",
+    "@gr/application": "*",
     "@gr/auth": "*",
     "@gr/core-domain": "*",
     "@gr/data": "*",

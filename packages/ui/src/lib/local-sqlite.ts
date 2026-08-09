@@ -28,6 +28,18 @@ export interface StocatorBaza {
   salveaza(bytes: Uint8Array): Promise<void>;
 }
 
+/**
+ * Executorul SQLite-WASM al modului `local-sqlite` CURENT (singleton — un singur
+ * motor local per aplicatie). Setat de `creeazaProviderLocalSqlite`; citit de
+ * `useComenzi`/`useRapoarte` ca sa ruleze motorul @gr/application + citirile din
+ * registre pe ACELASI executor ca providerul. `null` cat timp nu s-a initializat
+ * (dar `data-context` blocheaza randarea pana atunci, deci consumatorii il vad gata).
+ */
+let execLocalCurent: SqlExecutor | null = null;
+export function getExecLocal(): SqlExecutor | null {
+  return execLocalCurent;
+}
+
 export interface OptiuniLocalSqlite {
   /** Unde se persista baza. Implicit IndexedDB (`stocatorIndexedDb`). */
   stocator?: StocatorBaza;
@@ -171,5 +183,8 @@ export async function creeazaProviderLocalSqlite(
     await salveaza(); // persista schema nou-migrata
   }
 
-  return createSqlProvider(cuAutosalvare(execBrut, programeazaSalvare));
+  const execFinal = cuAutosalvare(execBrut, programeazaSalvare);
+  // Expus pentru useComenzi/useRapoarte (motor + rapoarte pe ACELASI executor).
+  execLocalCurent = execFinal;
+  return createSqlProvider(execFinal);
 }

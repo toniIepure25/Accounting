@@ -6,6 +6,8 @@ import {
 } from '@gr/data';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../lib/auth-context.js';
+import { createLocalCommandClient } from '../lib/local-comenzi.js';
+import { getExecLocal } from '../lib/local-sqlite.js';
 import { useToast } from '../lib/toast.js';
 
 /**
@@ -34,19 +36,27 @@ export function useComenzi(): ClientComenziOffline | null {
   // stabila pe durata sesiunii, deci o citim o data la construirea clientului.
   const mod = localStorage.getItem('gr-deployment-mode') ?? 'local';
   const serverUrl = localStorage.getItem('gr-server-url') ?? '';
-  const foloseesteServer =
-    mod !== 'local' && mod !== 'local-sqlite' && serverUrl.trim().length > 0;
+  const foloseesteServer = mod !== 'local' && mod !== 'local-sqlite' && serverUrl.trim().length > 0;
+  const modLocalSqlite = mod === 'local-sqlite';
 
-  const client = useMemo(
-    () =>
-      foloseesteServer
-        ? createOfflineCommandClient(
-            createCommandClient(serverUrl.trim(), () => userRef.current?.token ?? null),
-            { stocator: stocatorStorage(localStorage) },
-          )
-        : null,
-    [foloseesteServer, serverUrl],
-  );
+  const client = useMemo(() => {
+    // Mod retea/cloud: comenzi autoritare pe server, invelite cu coada offline.
+    if (foloseesteServer) {
+      return createOfflineCommandClient(
+        createCommandClient(serverUrl.trim(), () => userRef.current?.token ?? null),
+        { stocator: stocatorStorage(localStorage) },
+      );
+    }
+    // Mod local-sqlite: ACELASI motor @gr/application rulat pe executorul SQLite-WASM
+    // din browser (postarea scrie registrele local). `data-context` a initializat deja
+    // executorul inainte sa randeze paginile, deci `getExecLocal()` e gata aici.
+    if (modLocalSqlite) {
+      const exec = getExecLocal();
+      return exec ? createLocalCommandClient(exec, userRef.current?.nume ?? 'local') : null;
+    }
+    // Mod demo (in-memory): fara motor de comenzi — UI-ul cade pe CRUD.
+    return null;
+  }, [foloseesteServer, serverUrl, modLocalSqlite]);
 
   // La reconectare (si o data la montare, in caz ca au ramas comenzi dintr-o
   // sesiune anterioara), redam coada catre server si anuntam rezultatul.
