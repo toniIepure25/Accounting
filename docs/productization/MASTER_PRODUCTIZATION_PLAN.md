@@ -245,8 +245,18 @@ specs where applicable. No claim without evidence.
   the full `list()` + client-filter on the document hot path.
 - Verified live (LAN mode): Receptii marfa listed NIR-2026-000001 via
   `/reports/documents?tip=receptie_furnizor` (200), and the Facturi furnizori NIR picker
-  populated via a second `tip=receptie_furnizor&stare=validat` query. Remaining UI wiring:
-  SAF-T XML export + D394 / D390 off the ledgers, offline queue + safe reconciliation.
+  populated via a second `tip=receptie_furnizor&stare=validat` query.
+
+### WIRING-7 — SAF-T (D406) XML export off the persisted ledger — **done**
+- Server `GET /reports/saft?an=&luna=` → `genereazaSaftDinRegistre` (firma identity from
+  session, reconciled) returning `{ xml, reconciliere }`; `@gr/data createReportsClient.saft()`;
+  `SaftPage` downloads the server XML in network mode (client build fallback local) and
+  toasts the GL reconciliation. Closes the "SAF-T recomputes from documents" UI gap.
+- Verified live (LAN mode): a direct fetch returned a valid D406
+  `<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1">` with `echilibrat:true`, and the
+  SaftPage "Genereaza D406" button fired `GET /reports/saft?an=2026&luna=8` (200) + downloaded.
+  Remaining UI wiring: D394 / D390 off the ledgers, offline queue + safe reconciliation,
+  backup/restore action. Official ANAF SAF-T XSD validation stays an external gate (RK-09).
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

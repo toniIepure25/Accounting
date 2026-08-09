@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 387,
+      "total": 388,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..6: post, storno, persisted journal/stock/decont reports, keyset document list); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..7: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 78,
+        "data": 79,
         "application": 58,
         "server": 22,
         "license": 22,
@@ -1099,6 +1099,29 @@
         "Reads keyset only in NETWORK mode; local/demo still list()+filter. SAF-T XML export + D394/D390 still recompute from documents."
       ],
       "externalValidation": "Live browser E2E in-session (document list + source picker) against the demo server; not part of automated CI."
+    },
+    {
+      "id": "WIRING-7",
+      "phase": 15,
+      "title": "SAF-T (D406) XML export off the persisted ledger (network mode)",
+      "status": "done",
+      "files": [
+        "server/src/index.ts",
+        "packages/data/src/api-rapoarte.ts",
+        "packages/ui/src/pages/fiscal.tsx"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/journal-repo.test.ts (saft client)",
+        "live browser E2E + direct-fetch (LAN mode)"
+      ],
+      "commitSha": "cf98e00",
+      "acceptanceEvidence": "The SAF-T page built the D406 XML client-side from documents. In network mode it now downloads the XML the SERVER generates from the persisted accounting journal (double-entry, reconciled) via the existing @gr/application genereazaSaftDinRegistre. Server GET /reports/saft?an=&luna= (firma identity from the session, de/pana from the month, contabilitate.vizualizare) returns { xml, reconciliere }; @gr/data createReportsClient.saft(); SaftPage downloads the server XML in network mode + toasts the GL reconciliation, local demo keeps the client build. +1 @gr/data test. Verified LIVE (LAN mode): a direct fetch returned a valid D406 <AuditFile xmlns=mfp:anaf:dgti:d406:declaratie:v1> with reconciliere echilibrat:true, and the SaftPage 'Genereaza D406' button fired GET /reports/saft?an=2026&luna=8 (200) + downloaded. Suite 387->388 passed / 1 skipped.",
+      "risks": [
+        "SAF-T reads the ledger only in NETWORK mode; local/demo still builds from documents. Structural D406 subset (not full field coverage) — official ANAF XSD/business-rule validation remains an external gate (RK-09).",
+        "Remaining UI: D394/D390 still recompute from documents; offline queue + safe reconciliation not in the client sync loop; no backup/restore UI action yet."
+      ],
+      "externalValidation": "Official ANAF SAF-T validator/XSD = external gate (RK-09). Live browser E2E in-session only."
     }
   ]
 }
