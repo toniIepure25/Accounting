@@ -14,6 +14,7 @@ export * from './tax-snapshot.js';
 export * from './stock.js';
 export * from './accounting.js';
 export * from './fiscal.js';
+export * from './declaratii.js';
 export * from './efactura.js';
 export * from './saft.js';
 export * from './productie.js';

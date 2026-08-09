@@ -1,4 +1,5 @@
 import type { Document, DocumentLinie, Firma, Partener, Produs } from '@gr/core-domain';
+import type { RandD390, RandD394 } from '@gr/data';
 import {
   type EFacturaInput,
   type EFacturaParte,
@@ -404,22 +405,42 @@ export function DecontTvaPage() {
 
 export function D394Page() {
   const db = useData();
+  const rapoarte = useRapoarte();
   const { rows } = useCollection(db.documente);
   const [parteneri, setParteneri] = useState<Partener[]>([]);
   const [de, setDe] = useState('');
   const [pana, setPana] = useState('');
+  const [livrari, setLivrari] = useState<RandD394[]>([]);
+  const [achizitii, setAchizitii] = useState<RandD394[]>([]);
   useEffect(() => {
     db.parteneri.list().then(setParteneri);
   }, [db]);
 
-  const livrari = useMemo(
-    () => sumarD394Livrari(rows, parteneri, { de: de || undefined, pana: pana || undefined }),
-    [rows, parteneri, de, pana],
-  );
-  const achizitii = useMemo(
-    () => sumarD394Achizitii(rows, parteneri, { de: de || undefined, pana: pana || undefined }),
-    [rows, parteneri, de, pana],
-  );
+  // Mod retea: agregarea D394 e AUTORITARA pe server (scopata pe firma). Mod
+  // local (fara motor): grupatorii puri ruleaza in client peste documentele incarcate.
+  useEffect(() => {
+    const interval = { de: de || undefined, pana: pana || undefined };
+    if (rapoarte) {
+      let activ = true;
+      rapoarte
+        .d394(interval)
+        .then((r) => {
+          if (!activ) return;
+          setLivrari(r.livrari);
+          setAchizitii(r.achizitii);
+        })
+        .catch(() => {
+          if (!activ) return;
+          setLivrari([]);
+          setAchizitii([]);
+        });
+      return () => {
+        activ = false;
+      };
+    }
+    setLivrari(sumarD394Livrari(rows, parteneri, interval));
+    setAchizitii(sumarD394Achizitii(rows, parteneri, interval));
+  }, [rapoarte, rows, parteneri, de, pana]);
 
   const columns: Column<(typeof livrari)[number]>[] = [
     { key: 'denumire', header: 'Partener' },
@@ -508,18 +529,32 @@ export function D394Page() {
 
 export function D390Page() {
   const db = useData();
+  const rapoarte = useRapoarte();
   const { rows } = useCollection(db.documente);
   const [parteneri, setParteneri] = useState<Partener[]>([]);
   const [de, setDe] = useState('');
   const [pana, setPana] = useState('');
+  const [randuri, setRanduri] = useState<RandD390[]>([]);
   useEffect(() => {
     db.parteneri.list().then(setParteneri);
   }, [db]);
 
-  const randuri = useMemo(
-    () => sumarD390(rows, parteneri, { de: de || undefined, pana: pana || undefined }),
-    [rows, parteneri, de, pana],
-  );
+  // Mod retea: agregarea D390 (VIES) e AUTORITARA pe server (scopata pe firma);
+  // mod local: grupatorul pur ruleaza in client peste documentele incarcate.
+  useEffect(() => {
+    const interval = { de: de || undefined, pana: pana || undefined };
+    if (rapoarte) {
+      let activ = true;
+      rapoarte
+        .d390(interval)
+        .then((r) => activ && setRanduri(r.randuri))
+        .catch(() => activ && setRanduri([]));
+      return () => {
+        activ = false;
+      };
+    }
+    setRanduri(sumarD390(rows, parteneri, interval));
+  }, [rapoarte, rows, parteneri, de, pana]);
 
   const columns: Column<(typeof randuri)[number]>[] = [
     { key: 'denumire', header: 'Partener' },

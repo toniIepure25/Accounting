@@ -166,4 +166,31 @@ describe('createReportsClient — client de rapoarte persistate', () => {
     const [url] = fetchSpy.mock.calls[0]!;
     expect(url).toBe('http://srv:8787/reports/saft?an=2026&luna=2');
   });
+
+  it('d394: GET /reports/d394 cu interval, intoarce livrari + achizitii', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(raspuns(200, { livrari: [{ partenerId: 'p1' }], achizitii: [] }));
+    const client = createReportsClient('http://srv:8787', () => 'tok');
+
+    const r = await client.d394({ de: '2026-02-01', pana: '2026-02-28' });
+
+    expect(r.livrari).toHaveLength(1);
+    expect(r.achizitii).toEqual([]);
+    const [url] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe('http://srv:8787/reports/d394?de=2026-02-01&pana=2026-02-28');
+  });
+
+  it('d390: GET /reports/d390 fara interval omite query string', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(raspuns(200, { randuri: [{ partenerId: 'ue1', tara: 'DE' }] }));
+    const client = createReportsClient('http://srv:8787', () => 'tok');
+
+    const r = await client.d390();
+
+    expect(r.randuri[0]!.tara).toBe('DE');
+    const [url] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe('http://srv:8787/reports/d390');
+  });
 });

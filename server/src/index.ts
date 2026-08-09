@@ -1,5 +1,10 @@
 import { createServer } from 'node:http';
-import { genereazaDecontDinRegistre, genereazaSaftDinRegistre } from '@gr/application';
+import {
+  genereazaD390,
+  genereazaD394,
+  genereazaDecontDinRegistre,
+  genereazaSaftDinRegistre,
+} from '@gr/application';
 import { arePermisiune, hashParola, verificaParola } from '@gr/auth';
 import { esteImutabil } from '@gr/core-domain';
 import {
@@ -354,6 +359,27 @@ async function main() {
           },
         );
         return send(200, rezultat);
+      }
+
+      // GET /reports/d394?de=&pana= si /reports/d390?de=&pana=: declaratiile
+      // informative, calculate AUTORITAR pe server, scopate pe firma sesiunii —
+      // clientul nu mai agrega tabelul de documente si nu amesteca firme.
+      if (resource === 'reports' && (id === 'd394' || id === 'd390')) {
+        if (req.method !== 'GET') return send(405, { error: 'metoda nepermisa' });
+        if (!poateAccesa(sesiune.rol, 'contabilitate.vizualizare')) {
+          return send(403, { error: 'acces interzis' });
+        }
+        const optiuniDecl = {
+          de: url.searchParams.get('de') || undefined,
+          pana: url.searchParams.get('pana') || undefined,
+          firmaId: sesiune.firmaId,
+        };
+        const depsDecl = { exec, actor: sesiune.nume };
+        const raportDecl =
+          id === 'd394'
+            ? await genereazaD394(depsDecl, optiuniDecl)
+            : await genereazaD390(depsDecl, optiuniDecl);
+        return send(200, raportDecl);
       }
 
       // Schimbarea propriei parole: cere parola veche (o sesiune furata nu

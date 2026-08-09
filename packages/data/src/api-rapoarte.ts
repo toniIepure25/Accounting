@@ -14,6 +14,46 @@ export interface RaportSaft {
   reconciliere: { totalDebitBani: number; totalCreditBani: number; echilibrat: boolean };
 }
 
+/** Un rand D394 (livrari/achizitii pe partener) — vezi @gr/fiscal-ro RandD394. */
+export interface RandD394 {
+  partenerId: string;
+  denumire: string;
+  cui: string | null;
+  platitorTva: boolean;
+  nrDocumente: number;
+  bazaBani: number;
+  tvaBani: number;
+  totalBani: number;
+}
+
+/** D394 pe o perioada, calculat autoritar pe server (scopat pe firma). */
+export interface RaportD394 {
+  livrari: RandD394[];
+  achizitii: RandD394[];
+}
+
+/** Un rand D390 (VIES) — vezi @gr/fiscal-ro RandD390. */
+export interface RandD390 {
+  partenerId: string;
+  denumire: string;
+  tara: string;
+  codTvaIntracomunitar: string | null;
+  operatiune: 'livrare' | 'achizitie';
+  nrDocumente: number;
+  bazaBani: number;
+}
+
+/** D390 (VIES) pe o perioada, calculat autoritar pe server (scopat pe firma). */
+export interface RaportD390 {
+  randuri: RandD390[];
+}
+
+/** Interval optional pentru declaratiile pe perioada. */
+export interface IntervalRaport {
+  de?: string;
+  pana?: string;
+}
+
 /**
  * Client pentru RAPOARTELE citite din registrele persistente ale serverului
  * (modurile retea/cloud). Ex.: notele contabile vin din `journal_entries` +
@@ -31,6 +71,10 @@ export interface ClientRapoarte {
   documente(filtru?: FiltruDocumente, paginare?: PaginareKeyset): Promise<PaginaDocumente>;
   /** Fisierul SAF-T (D406) pe luna/an, din registrul contabil persistat. */
   saft(perioada: { an: number; luna: number }): Promise<RaportSaft>;
+  /** D394 (livrari/achizitii pe partener), calculat pe server, scopat pe firma. */
+  d394(interval?: IntervalRaport): Promise<RaportD394>;
+  /** D390 (VIES), calculat pe server, scopat pe firma. */
+  d390(interval?: IntervalRaport): Promise<RaportD390>;
 }
 
 export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): ClientRapoarte {
@@ -90,5 +134,23 @@ export function createReportsClient(baseUrl: string, getToken?: FurnizorToken): 
       fetch(`${base}/reports/saft?an=${an}&luna=${luna}`, { headers: headers() }).then(
         ok,
       ) as Promise<RaportSaft>,
+    d394: (interval) => {
+      const q = new URLSearchParams();
+      if (interval?.de) q.set('de', interval.de);
+      if (interval?.pana) q.set('pana', interval.pana);
+      const qs = q.toString();
+      return fetch(`${base}/reports/d394${qs ? `?${qs}` : ''}`, { headers: headers() }).then(
+        ok,
+      ) as Promise<RaportD394>;
+    },
+    d390: (interval) => {
+      const q = new URLSearchParams();
+      if (interval?.de) q.set('de', interval.de);
+      if (interval?.pana) q.set('pana', interval.pana);
+      const qs = q.toString();
+      return fetch(`${base}/reports/d390${qs ? `?${qs}` : ''}`, { headers: headers() }).then(
+        ok,
+      ) as Promise<RaportD390>;
+    },
   };
 }

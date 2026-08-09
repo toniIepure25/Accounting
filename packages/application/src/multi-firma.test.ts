@@ -6,6 +6,7 @@ import { type Migration, type SqlExecutor, migrate, withExecutor } from '@gr/dat
 import { fromBetterSqlite } from '@gr/data/node-sqlite';
 import Database from 'better-sqlite3';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { genereazaD390, genereazaD394 } from './declaratii.js';
 import { genereazaDecontDinRegistre } from './fiscal.js';
 import { createDraftDocument } from './lifecycle.js';
 import { PerioadaInchisaError } from './perioada.js';
@@ -159,5 +160,38 @@ describe('P10 — scopare multi-firma + inchidere de perioada per firma', () => 
     // Firma B (fara inchidere) posteaza normal in aceeasi perioada.
     const rezB = await posteaza(fx, fx.b, { serie: 'NIR' }, 1, 1000);
     expect(rezB.document.stare).toBe('validat');
+  });
+
+  it('D394 al unei firme NU include documentele altei firme', async () => {
+    await posteaza(fx, fx.a, { serie: 'NIR' }, 10, 1000); // A: achizitie de la partenerul A
+    await posteaza(fx, fx.b, { serie: 'NIR' }, 5, 1000); // B: achizitie de la partenerul B
+
+    const d394A = await genereazaD394(deps(fx), { firmaId: fx.a.id });
+    expect(d394A.achizitii).toHaveLength(1);
+    expect(d394A.achizitii[0]!.partenerId).toBe(fx.a.partenerId);
+    expect(d394A.achizitii[0]!.bazaBani).toBe(10000);
+    // Partenerul firmei B nu apare in D394-ul firmei A.
+    expect(d394A.achizitii.some((r) => r.partenerId === fx.b.partenerId)).toBe(false);
+  });
+
+  it('D390 (VIES) grupeaza doar partenerii intracomunitari ai firmei', async () => {
+    // Partener din alt stat UE, achizitie postata pentru firma A.
+    const ueDe = await withExecutor(fx.exec).parteneri.create({
+      tip: 'furnizor',
+      denumire: 'Möbel DE GmbH',
+      tara: 'DE',
+      codTvaIntracomunitar: 'DE811111111',
+    });
+    await posteaza(fx, fx.a, { serie: 'NIR', partenerId: ueDe.id }, 4, 1000); // intracom
+    await posteaza(fx, fx.a, { serie: 'NIR' }, 3, 1000); // partener RO -> nu in D390
+
+    const d390A = await genereazaD390(deps(fx), { firmaId: fx.a.id });
+    expect(d390A.randuri).toHaveLength(1);
+    expect(d390A.randuri[0]!.tara).toBe('DE');
+    expect(d390A.randuri[0]!.operatiune).toBe('achizitie');
+    expect(d390A.randuri[0]!.bazaBani).toBe(4000);
+    // Firma B nu are operatiuni intracomunitare.
+    const d390B = await genereazaD390(deps(fx), { firmaId: fx.b.id });
+    expect(d390B.randuri).toEqual([]);
   });
 });
