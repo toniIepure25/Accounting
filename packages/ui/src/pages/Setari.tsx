@@ -391,7 +391,11 @@ export function SetariPage() {
           <Field label="Deployment" hint="Local (SQLite) · Retea (PostgreSQL) · Cloud">
             <Select
               options={[
-                { value: 'local', label: 'Local — un calculator (SQLite)' },
+                { value: 'local', label: 'Local demo — date in memorie (se pierd la refresh)' },
+                {
+                  value: 'local-sqlite',
+                  label: 'Local — un calculator (SQLite persistent, motor real)',
+                },
                 { value: 'lan', label: 'Retea locala — mai multe terminale (PostgreSQL)' },
                 { value: 'cloud', label: 'Cloud — mai multe locatii' },
               ]}
@@ -400,7 +404,7 @@ export function SetariPage() {
             />
           </Field>
 
-          {mod !== 'local' && (
+          {mod !== 'local' && mod !== 'local-sqlite' && (
             <Field
               label="URL server API"
               hint="Serverul @gr/server (docker-compose / rulare directa) pentru modul retea/cloud."

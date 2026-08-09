@@ -20,6 +20,7 @@ import {
 import { useAuth } from './auth-context.js';
 import { EVENIMENT_FIRMA_SCHIMBATA, LS_FIRMA } from './firma-context.js';
 import { useLicense } from './license-context.js';
+import { creeazaProviderLocalSqlite } from './local-sqlite.js';
 
 const DataContext = createContext<DataProvider | null>(null);
 
@@ -78,15 +79,36 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
 
   const mod = localStorage.getItem('gr-deployment-mode') ?? 'local';
   const serverUrl = localStorage.getItem('gr-server-url') ?? '';
-  const foloseesteServer = mod !== 'local' && serverUrl.trim().length > 0;
+  const modLocalSqlite = mod === 'local-sqlite';
+  const foloseesteServer = mod !== 'local' && !modLocalSqlite && serverUrl.trim().length > 0;
 
-  const base = useMemo<DataProvider>(
-    () =>
-      foloseesteServer
-        ? createApiProvider(serverUrl.trim(), () => userRef.current?.token ?? null)
-        : createMemoryProvider(demoSeed),
-    [foloseesteServer, serverUrl],
+  // Server + demo (in-memory) se construiesc SINCRON. Modul `local-sqlite` (motor
+  // SQLite-WASM real, offline) se initializeaza ASINCRON (incarca WASM + migreaza +
+  // seed/persistenta), deci baza incepe `null` si se completeaza dupa init; daca
+  // WASM pica, cadem pe providerul in-memory ca aplicatia sa nu ramana blocata.
+  const construiesteSincron = (): DataProvider =>
+    foloseesteServer
+      ? createApiProvider(serverUrl.trim(), () => userRef.current?.token ?? null)
+      : createMemoryProvider(demoSeed);
+
+  const [base, setBase] = useState<DataProvider | null>(() =>
+    modLocalSqlite ? null : construiesteSincron(),
   );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: init o singura data per mod (modul se schimba doar prin reload din Setari).
+  useEffect(() => {
+    if (!modLocalSqlite) return;
+    let viu = true;
+    creeazaProviderLocalSqlite()
+      .then((p) => viu && setBase(() => p))
+      .catch((e) => {
+        console.error('init local-sqlite esuat — cad pe providerul in-memory:', e);
+        if (viu) setBase(() => createMemoryProvider(demoSeed));
+      });
+    return () => {
+      viu = false;
+    };
+  }, [modLocalSqlite]);
 
   const [firmaSemnal, setFirmaSemnal] = useState(() => localStorage.getItem(LS_FIRMA));
   useEffect(() => {
@@ -96,7 +118,8 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `firmaSemnal` nu e citit direct in corp (firma curenta se citeste live prin firmaCurenta()) — e in deps doar ca sa forteze repo-uri NOI (identitate noua) la schimbarea firmei, ca useCollection sa reincarce automat.
-  const provider = useMemo<DataProvider>(() => {
+  const provider = useMemo<DataProvider | null>(() => {
+    if (!base) return null; // init local-sqlite inca in curs
     const cineScrie = () => ({
       utilizator: userRef.current?.nume ?? 'necunoscut',
       rol: userRef.current?.rol ?? '',
@@ -125,6 +148,15 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     }
     return decorat as DataProvider;
   }, [base, firmaSemnal]);
+
+  if (!provider) {
+    // Doar in modul `local-sqlite`, cat timp motorul WASM se initializeaza.
+    return (
+      <div className="flex min-h-screen items-center justify-center text-fg-muted">
+        Se initializeaza motorul local (SQLite)…
+      </div>
+    );
+  }
 
   return <DataContext.Provider value={provider}>{children}</DataContext.Provider>;
 }

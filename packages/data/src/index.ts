@@ -9,6 +9,7 @@ export * from './api-comenzi.js';
 export * from './api-rapoarte.js';
 export * from './offline-comenzi.js';
 export * from './api-admin.js';
+export * from './migratii-incorporate.js';
 export * from './numerotare.js';
 export * from './api-numerotare.js';
 export * from './audit-wrapper.js';

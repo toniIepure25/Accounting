@@ -15,7 +15,8 @@ export function useRapoarte(): ClientRapoarte | null {
 
   const mod = localStorage.getItem('gr-deployment-mode') ?? 'local';
   const serverUrl = localStorage.getItem('gr-server-url') ?? '';
-  const foloseesteServer = mod !== 'local' && serverUrl.trim().length > 0;
+  const foloseesteServer =
+    mod !== 'local' && mod !== 'local-sqlite' && serverUrl.trim().length > 0;
 
   return useMemo(
     () =>

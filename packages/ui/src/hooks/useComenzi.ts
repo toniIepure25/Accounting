@@ -34,7 +34,8 @@ export function useComenzi(): ClientComenziOffline | null {
   // stabila pe durata sesiunii, deci o citim o data la construirea clientului.
   const mod = localStorage.getItem('gr-deployment-mode') ?? 'local';
   const serverUrl = localStorage.getItem('gr-server-url') ?? '';
-  const foloseesteServer = mod !== 'local' && serverUrl.trim().length > 0;
+  const foloseesteServer =
+    mod !== 'local' && mod !== 'local-sqlite' && serverUrl.trim().length > 0;
 
   const client = useMemo(
     () =>
