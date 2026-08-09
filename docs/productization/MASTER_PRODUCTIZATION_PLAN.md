@@ -255,8 +255,18 @@ specs where applicable. No claim without evidence.
 - Verified live (LAN mode): a direct fetch returned a valid D406
   `<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1">` with `echilibrat:true`, and the
   SaftPage "Genereaza D406" button fired `GET /reports/saft?an=2026&luna=8` (200) + downloaded.
-  Remaining UI wiring: D394 / D390 off the ledgers, offline queue + safe reconciliation,
-  backup/restore action. Official ANAF SAF-T XSD validation stays an external gate (RK-09).
+
+### WIRING-8 — D394 / D390 computed server-side, firma-scoped — **done**
+- `@gr/application genereazaD394` / `genereazaD390` load the firma's documents + parteneri
+  and run the existing tested `@gr/fiscal-ro` grouparori; server `GET /reports/d394` +
+  `/reports/d390` (firmaId from session); `@gr/data d394()/d390()`; `D394Page`/`D390Page`
+  fetch the server result in network mode (client grouparori kept as local fallback). The
+  client no longer pulls/aggregates the full cross-firma document + partener tables.
+- Verified live (LAN mode): `/reports/d394` (200: livrari + achizitii grouped on partener)
+  and `/reports/d390` (200: only the DE intracom partener) rendered on both pages.
+  Remaining UI wiring: offline queue + safe reconciliation, backup/restore action.
+  D394/D390 stay working drafts (fiscal_events-native rewrite is a follow-up); the official
+  ANAF declaration format stays an external filing gate.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

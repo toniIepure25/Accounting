@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 388,
+      "total": 392,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..7: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..8: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML, D394/D390 server-side); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 79,
-        "application": 58,
+        "data": 81,
+        "application": 60,
         "server": 22,
         "license": 22,
         "ui": 22,
@@ -1122,6 +1122,32 @@
         "Remaining UI: D394/D390 still recompute from documents; offline queue + safe reconciliation not in the client sync loop; no backup/restore UI action yet."
       ],
       "externalValidation": "Official ANAF SAF-T validator/XSD = external gate (RK-09). Live browser E2E in-session only."
+    },
+    {
+      "id": "WIRING-8",
+      "phase": 15,
+      "title": "D394/D390 computed server-side, firma-scoped (network mode)",
+      "status": "done",
+      "files": [
+        "packages/application/src/declaratii.ts",
+        "server/src/index.ts",
+        "packages/data/src/api-rapoarte.ts",
+        "packages/ui/src/pages/fiscal.tsx"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/application/src/multi-firma.test.ts (D394/D390 firma-scoping)",
+        "packages/data/src/journal-repo.test.ts (d394/d390 client)",
+        "live browser E2E + direct-fetch (LAN mode)"
+      ],
+      "commitSha": "a45f87d",
+      "acceptanceEvidence": "The D394/D390 pages aggregated the FULL document + partener tables in the CLIENT. In network mode the aggregation now runs AUTHORITATIVELY on the SERVER, scoped to the session's firma. @gr/application genereazaD394/genereazaD390 load the firma's documents + parteneri and run the existing tested @gr/fiscal-ro grouparori (sumarD394Livrari/Achizitii, sumarD390); server GET /reports/d394?de=&pana= + /reports/d390?de=&pana= (contabilitate.vizualizare, firmaId from session); @gr/data createReportsClient.d394()/d390(); D394Page/D390Page fetch the server result in network mode, keep the client grouparori as the local fallback. +2 @gr/data + +2 @gr/application tests (A's D394 excludes B's partener; D390 keeps only the intracom partener). Verified LIVE (LAN mode): direct fetch /reports/d394 (200: livrari Restaurant Boema 119000 total; achizitii Lemn Prod 700000 + Holz Handel GmbH 200000) + /reports/d390 (200: only Holz Handel GmbH DE achizitie 200000); D394Page + D390Page rendered the firma-scoped rows. Suite 388->392 passed / 1 skipped.",
+      "risks": [
+        "D394/D390 remain DECLARATII DE LUCRU (working drafts) derived from VALIDATED documents; the fiscal_events-native rewrite that fiscal.ts envisions is a follow-up. Server-side aggregation applies in NETWORK mode only; local/demo (no engine) still aggregates in the client.",
+        "The final ANAF submission format (D394 sections A/B by partner VAT status; D390 operation codes L/A/S) must be confirmed at filing — external gate.",
+        "Remaining UI: offline command queue + safe reconciliation not in the client sync loop; no backup/restore UI action yet."
+      ],
+      "externalValidation": "Official ANAF D394/D390 declaration format/validator = external gate. Live browser E2E in-session only."
     }
   ]
 }
