@@ -11,16 +11,16 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 415,
+      "total": 416,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike + WIRING-12 local-sqlite mode; +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike + WIRING-12/13 local-sqlite (persistent provider + local command engine); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
         "data": 101,
         "application": 61,
         "server": 22,
         "license": 22,
-        "ui": 24,
+        "ui": 25,
         "sync": 17,
         "fiscal-ro": 14,
         "auth": 11,
@@ -1254,6 +1254,31 @@
         "sql.js is a synchronous single-writer WASM instance — single-user only; multi-writer stays server/PostgreSQL."
       ],
       "externalValidation": "Factory + persistence + migrations bundle proven by @gr/data + @gr/ui vitest; live browser E2E in-session (engine init + seed + persist + reload)."
+    },
+    {
+      "id": "WIRING-13",
+      "phase": 15,
+      "title": "local command ENGINE — local-sqlite posts via @gr/application (ledgers in-browser)",
+      "status": "done",
+      "files": [
+        "packages/ui/src/lib/local-comenzi.ts",
+        "packages/ui/src/lib/local-sqlite.ts",
+        "packages/ui/src/hooks/useComenzi.ts",
+        "packages/ui/package.json"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/ui/src/lib/local-comenzi.test.ts (post on the real local factory writes journal/stock/fiscal, balanced)",
+        "live browser smoke (local-sqlite: Dashboard + DocumentEditor render, no errors)"
+      ],
+      "commitSha": "4d5002d",
+      "acceptanceEvidence": "local-sqlite previously posted via a CRUD state-flip (no ledgers). It now runs the SAME @gr/application engine on the in-browser SQLite-WASM executor: posting/storno writes journal + stock + fiscal registers locally, offline, like the server. local-sqlite.ts exposes the autosave-wrapped executor (getExecLocal) so command writes persist to IndexedDB; local-comenzi.ts createLocalCommandClient runs postDocument/reverseDocument/approveDocument/cancelDocument, implementing ClientComenziOffline (sincronizeaza/inAsteptare no-op) so it's swap-in for useComenzi; @gr/application added to @gr/ui deps (bundle-safe). useComenzi local-sqlite branch returns it; demo stays null (CRUD); network unchanged. +1 @gr/ui test (posteaza on the real local factory writes journal_lines+stock_ledger_entries+fiscal_events, journal balanced). Suite 415->416 / 1 skipped; typecheck 11/11; biome clean; build:web OK. Verified LIVE (local-sqlite, no server): Dashboard + receptii-marfa (DocumentEditor->useComenzi->local engine) render with no console errors; @gr/application bundles + the exec singleton resolves at runtime.",
+      "risks": [
+        "Local ledger REPORTS not yet wired: in local-sqlite, useRapoarte still returns null so accounting/stock/decont/SAF-T/D394-D390 RECOMPUTE from documents rather than reading the freshly-written local registers. They agree (that's the invariant) but the ledger-native read path is the next step; then reconcileSigur has a local dataset.",
+        "The full UI create+post flow was not driven live (fiddly DocumentEditor modal + demo-seed numbering collision on NIR); the in-browser post->ledgers behavior is proven by the node-WASM unit test running the exact production factory + command client.",
+        "@gr/application is now in the web bundle (lazy via local-sqlite path) — bundle-safe (no node-only runtime deps), build:web verified."
+      ],
+      "externalValidation": "In-browser engine-writes-ledgers proven by @gr/ui node-WASM unit test; live browser smoke (no errors) in-session."
     }
   ]
 }

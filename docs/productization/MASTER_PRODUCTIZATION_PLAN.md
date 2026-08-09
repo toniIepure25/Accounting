@@ -314,9 +314,20 @@ specs where applicable. No claim without evidence.
 - Verified live (local-sqlite, no server): the WASM engine initialized in-browser, migrated the
   real schema, seeded demo, and persisted a 471 KB snapshot to IndexedDB; the app reads all data
   from the SQLite provider; a reload loads from the snapshot (no re-seed). Persistence round-trip
-  unit-tested. NEXT: the local COMMAND engine (post/reverse via `@gr/application` on the local
-  exec) + local ledger reports, then `reconcileSigur` — so local-sqlite runs the full engine
-  offline, not a CRUD flip.
+  unit-tested.
+
+### WIRING-13 — local command ENGINE: local-sqlite posts via @gr/application — **done**
+- local-sqlite previously posted via a CRUD state-flip (no ledgers). It now runs the SAME
+  `@gr/application` engine on the in-browser SQLite-WASM executor: `local-sqlite.ts` exposes
+  `getExecLocal` (autosave-wrapped exec → command writes persist), `local-comenzi.ts`
+  `createLocalCommandClient` runs postDocument/reverse/approve/cancel, and `useComenzi`'s
+  local-sqlite branch returns it. Posting/storno now writes journal + stock + fiscal locally,
+  offline, exactly like the server. `@gr/application` added to `@gr/ui` deps (bundle-safe).
+- Proven by a `@gr/ui` node-WASM test (post on the real local factory writes journal_lines +
+  stock_ledger_entries + fiscal_events, journal balanced) + live browser smoke (Dashboard +
+  DocumentEditor render, no errors). NEXT: local ledger REPORTS (`useRapoarte` local branch
+  reading the local exec) so reports read the local registers instead of recomputing; then
+  `reconcileSigur` has a local dataset.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

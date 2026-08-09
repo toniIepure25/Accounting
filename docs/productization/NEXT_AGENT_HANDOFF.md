@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `670acc0` (WIRING-12 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `4d5002d` (WIRING-13 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -137,9 +137,16 @@ planning or repeat earlier phases.
   (loading gate + in-memory fallback); `useComenzi`/`useRapoarte`/`useAdmin` exclude `local-sqlite`
   from server mode; Setari has the option; sql.js lazy-loads only here. +2 @gr/data + +2 @gr/ui
   tests + verified LIVE (engine init + migrate + seed + 471 KB IndexedDB snapshot; reload from
-  snapshot). CAVEAT: local-sqlite still POSTS via CRUD flip + reports RECOMPUTE from documents
-  (same as demo) — the local COMMAND engine + local ledger reports are the next step, and only
-  then does `reconcileSigur` have a real local ledger to reconcile.
+  snapshot).
+- **UI/transport wiring, slice 13 (WIRING-13)**: the local COMMAND engine — `local-sqlite`
+  posts via `@gr/application` on the in-browser exec, writing journal + stock + fiscal locally
+  (no longer a CRUD flip). `packages/ui/src/lib/local-sqlite.ts` `getExecLocal` exposes the
+  autosave-wrapped exec; `packages/ui/src/lib/local-comenzi.ts` `createLocalCommandClient`
+  (post/reverse/approve/cancel, `ClientComenziOffline`-shaped) is returned by `useComenzi`'s
+  local-sqlite branch. `@gr/application` added to `@gr/ui` deps (bundle-safe). +1 @gr/ui
+  node-WASM test (post writes the three registers, balanced) + live smoke (no errors). CAVEAT:
+  local ledger REPORTS still recompute — `useRapoarte` local branch reading the local exec is
+  the next step, and only then does `reconcileSigur` have a real local ledger.
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -165,8 +172,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **415 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 101, application 61, server 22, ui 24,
+- `npx turbo run test --force` → **416 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 101, application 61, server 22, ui 25,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -195,10 +202,10 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
   WIRING-9); full-DB backup/restore incl. ledgers is wired into Settings (`GET /admin/backup`
   + `POST /admin/restore`, WIRING-10). Still generic/not-yet-wired: `reconcileSigur` (conflict-
   aware DATA reconciliation, Phase 12) isn't in the client sync loop (needs local persistence
-  first). The wired reads apply in NETWORK mode; the new `local-sqlite` mode (WIRING-12) runs a
-  real persistent in-browser SQLite provider (data survives refresh) but still POSTS via CRUD
-  flip + RECOMPUTES reports — its local COMMAND engine + local ledger reports (running
-  `@gr/application` on the local exec) are the next step to make it engine-backed like NETWORK.
+  first). The wired reads apply in NETWORK mode; the `local-sqlite` mode runs a real persistent
+  in-browser SQLite provider (WIRING-12) and now POSTS via the real `@gr/application` engine
+  (WIRING-13, ledgers written locally). Remaining for local-sqlite: the local ledger REPORTS
+  (`useRapoarte` local branch reads the local exec instead of recomputing), then `reconcileSigur`.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -216,16 +223,18 @@ Remaining build directions the user selected:
 - **UI/transport wiring** — POST + STORNO + accounting reports + STOCK reports + D300
   decont + document LIST + SAF-T XML + D394/D390 + offline COMMAND queue + full-DB
   backup/restore are wired (WIRING-2..10); the browser SQLite executor is proven (WIRING-11
-  spike) and now the `local-sqlite` mode runs a real persistent in-browser SQLite provider
-  (WIRING-12). Next slices: (1) **the local ENGINE** — a `local-sqlite` command client
-  (post/reverse via `@gr/application` on the local exec, so the ledgers get written) + local
-  ledger reports (`useComenzi`/`useRapoarte` local branches read the local exec), making
-  `local-sqlite` engine-backed like NETWORK; then `reconcileSigur` (it finally has a local
-  dataset). Expose the exec from `creeazaProviderLocalSqlite` and add `@gr/application` to
-  `@gr/ui` deps. (2) the fiscal_events-native rewrite of D394/D390; (3) a PostgreSQL-native
-  backup path (pg_dump wrapper). Verify with the Browser preview: `local-sqlite` mode needs
-  only `ui-dev` (no server) — set `localStorage['gr-deployment-mode']='local-sqlite'`; NETWORK
-  slices need `api-server` + `ui-dev` (LAN, login admin/admin123) per the run skill.
+  spike); `local-sqlite` runs a real persistent in-browser SQLite provider (WIRING-12) and now
+  POSTS via the real `@gr/application` engine (WIRING-13). Next slices: (1) **local ledger
+  REPORTS** — `useRapoarte`'s local-sqlite branch reads the local exec (via `getExecLocal()`)
+  instead of returning null: build a local `ClientRapoarte` over `listeazaNoteContabilePersistate`
+  / `listeazaMiscariStocPersistate` / `listeazaSolduriStoc` / `genereazaDecontDinRegistre` /
+  `genereazaSaftDinRegistre` / `genereazaD394` / `genereazaD390` + `interogheazaDocumente` on the
+  local exec, so accounting/stock/decont/SAF-T/D394-D390 read the LOCAL registers just written by
+  WIRING-13. Then `reconcileSigur` (it finally has a local dataset). (2) the fiscal_events-native
+  rewrite of D394/D390; (3) a PostgreSQL-native backup path (pg_dump wrapper). Verify with the
+  Browser preview: `local-sqlite` mode needs only `ui-dev` (no server) — set
+  `localStorage['gr-deployment-mode']='local-sqlite'`; NETWORK slices need `api-server` +
+  `ui-dev` (LAN, login admin/admin123) per the run skill.
   - NOTE 1: restarting/reloading `api-server` (tsx watch) resets the in-memory demo DB +
     SESSION_SECRET — clear `localStorage['gr-user']` + re-login after a server change.
   - NOTE 2 (env quirk seen this session): after MANY tsx-watch reloads a browser tab's UI
