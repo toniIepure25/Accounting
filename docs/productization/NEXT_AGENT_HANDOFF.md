@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `1b73d7b` (WIRING-9 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `070b14a` (WIRING-10 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -104,6 +104,16 @@ planning or repeat earlier phases.
   (conflict-aware DATA reconciliation, RK-12) needs local persistence first. Reconnect-replay
   is unit-tested only (the demo server resets its DB + session secret on restart, so a live
   successful replay isn't reproducible in this harness).
+- **UI/transport wiring, slice 10 (WIRING-10)**: full-database backup/restore is wired into
+  Settings — server `GET /admin/backup` → `backupVerificat(exec, creeazaScratchMigrat)`
+  (scratch-DB restore-probe before serving) + `POST /admin/restore` → `importBazaSql`
+  (atomic, journal-balance-verified), `setari.administrare`, SQLite-only (501 on PostgreSQL).
+  `@gr/data createAdminClient` (`api-admin.ts`) + `useAdmin` hook; `SetariPage` downloads/
+  restores the FULL server snapshot (incl. ledgers) in network mode, keeping the ledger-lossy
+  `exportDate`/`importDate` DataProvider path as the local fallback. +3 @gr/data tests +
+  verified LIVE (`/admin/backup` 200 → 36-table snapshot incl. all ledger tables; Setari
+  "Descarca backup" button fired the call). NOTE: destructive RESTORE not live-run (confirm-
+  dialog gated); a PostgreSQL-native backup path (pg_dump wrapper) is future work.
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -129,8 +139,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **400 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 89, application 60, server 22, ui 22,
+- `npx turbo run test --force` → **403 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 92, application 60, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -156,10 +166,11 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
   the SAF-T (D406) XML export reads the persisted journal (`GET /reports/saft`, WIRING-7);
   D394/D390 are computed server-side, firma-scoped (`GET /reports/d394` + `/reports/d390`,
   WIRING-8); the offline COMMAND queue is wired into the command transport (`createOfflineCommandClient`,
-  WIRING-9). Still generic/not-yet-wired: `reconcileSigur` (conflict-aware DATA reconciliation,
-  Phase 12) isn't in the client sync loop (needs local persistence first); no backup/restore
-  UI action yet. All of the wired reads apply only in NETWORK mode — local/demo (memory, no
-  engine) still recomputes, so a browser SQLite engine for local mode would unify the two paths.
+  WIRING-9); full-DB backup/restore incl. ledgers is wired into Settings (`GET /admin/backup`
+  + `POST /admin/restore`, WIRING-10). Still generic/not-yet-wired: `reconcileSigur` (conflict-
+  aware DATA reconciliation, Phase 12) isn't in the client sync loop (needs local persistence
+  first). All of the wired reads apply only in NETWORK mode — local/demo (memory, no engine)
+  still recomputes, so a browser SQLite engine for local mode would unify the two paths.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -175,15 +186,14 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 ## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 + P17-R1 done)
 Remaining build directions the user selected:
 - **UI/transport wiring** — POST + STORNO + accounting reports + STOCK reports + D300
-  decont + document LIST + SAF-T XML + D394/D390 + offline COMMAND queue are wired
-  (WIRING-2..9). Next slices: (1) a backup/restore action in the UI
-  (`backupVerificat`/`importBazaSql` ready — likely a server `POST /admin/backup` returning
-  the snapshot, restore gated carefully) — the smallest remaining, most self-contained slice;
-  (2) a browser SQLite engine for LOCAL mode so the same ledger-reads (and the offline data
-  entry that `reconcileSigur` needs) apply offline — the big architectural unlock;
-  (3) the fiscal_events-native rewrite of D394/D390 (working drafts today). Verify with the
-  Browser preview (`preview_start` `api-server` + `ui-dev`, LAN mode; login admin/admin123)
-  per the run skill.
+  decont + document LIST + SAF-T XML + D394/D390 + offline COMMAND queue + full-DB
+  backup/restore are wired (WIRING-2..10). Next slices: (1) a browser SQLite engine for
+  LOCAL mode so the same ledger-reads (and the offline data entry that `reconcileSigur`
+  needs) apply offline — the big architectural unlock, and the thing that makes the whole
+  network-mode/local-mode split disappear; (2) the fiscal_events-native rewrite of D394/D390
+  (working drafts today); (3) a PostgreSQL-native backup path (pg_dump wrapper — the /admin
+  endpoints are SQLite-only today). Verify with the Browser preview (`preview_start`
+  `api-server` + `ui-dev`, LAN mode; login admin/admin123) per the run skill.
   - NOTE 1: restarting/reloading `api-server` (tsx watch) resets the in-memory demo DB +
     SESSION_SECRET — clear `localStorage['gr-user']` + re-login after a server change.
   - NOTE 2 (env quirk seen this session): after MANY tsx-watch reloads a browser tab's UI

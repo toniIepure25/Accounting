@@ -278,8 +278,22 @@ specs where applicable. No claim without evidence.
 - Verified live (LAN mode): online post/storno unchanged; with the api-server STOPPED, a
   storno enqueued the exact `reverse-document` command in `gr-coada-comenzi`. Replay +
   idempotency covered by 8 unit tests (the demo server resets its DB + secret on restart, so
-  a live successful replay isn't reproducible). Remaining UI wiring: a backup/restore action;
-  `reconcileSigur` (conflict-aware DATA reconciliation) needs local persistence first.
+  a live successful replay isn't reproducible). `reconcileSigur` (conflict-aware DATA
+  reconciliation) needs local persistence first.
+
+### WIRING-10 — full-database backup/restore UI action (incl. ledgers) — **done**
+- The Settings backup used `exportDate` (DataProvider) which LOSES the persisted registers.
+  In network mode it now downloads the FULL verified DB snapshot from the server incl. every
+  ledger: server `GET /admin/backup` → `backupVerificat` (scratch-DB restore-probe before
+  serving) + `POST /admin/restore` → `importBazaSql` (atomic, journal-balance-verified),
+  `setari.administrare`, SQLite-only (501 on PostgreSQL → CLI/pg_dump). `@gr/data
+  createAdminClient` + `useAdmin`; `SetariPage` uses the full-DB path in network mode
+  (DataProvider fallback local).
+- Verified live (LAN mode): `/admin/backup` 200 returned a 36-table snapshot including
+  `journal_entries`/`journal_lines`/`stock_ledger_entries`/`stock_balances`/`fiscal_events`
+  (restore-probe passed); the Setari "Descarca backup" button fired `GET /admin/backup` (200).
+  Remaining: a browser SQLite engine for LOCAL mode (offline data entry + `reconcileSigur`);
+  the fiscal_events-native D394/D390 rewrite; a PostgreSQL-native backup path (pg_dump).
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

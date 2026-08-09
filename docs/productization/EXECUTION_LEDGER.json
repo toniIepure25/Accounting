@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 400,
+      "total": 403,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..9: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML, D394/D390 server-side, offline command queue); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..10: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML, D394/D390 server-side, offline command queue, full-DB backup/restore); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 89,
+        "data": 92,
         "application": 60,
         "server": 22,
         "license": 22,
@@ -1174,6 +1174,32 @@
         "reconcileSigur (conflict-aware DATA reconciliation, RK-12) is NOT yet in the client sync loop — it needs a local dataset to reconcile against; applies once local persistence lands."
       ],
       "externalValidation": "Offline replay/idempotency proven by @gr/data + @gr/sync unit tests; live browser E2E in-session only (enqueue path)."
+    },
+    {
+      "id": "WIRING-10",
+      "phase": 15,
+      "title": "Full-database backup/restore UI action (network mode, incl. ledgers)",
+      "status": "done",
+      "files": [
+        "server/src/db.ts",
+        "server/src/index.ts",
+        "packages/data/src/api-admin.ts",
+        "packages/ui/src/hooks/useAdmin.ts",
+        "packages/ui/src/pages/Setari.tsx"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/api-admin.test.ts (3 tests)",
+        "live browser E2E + direct-fetch (LAN mode)"
+      ],
+      "commitSha": "070b14a",
+      "acceptanceEvidence": "The Settings backup button used the DataProvider export (exportDate) which LOSES the persisted registers (journal, stock, fiscal events). In network mode it now downloads the FULL verified database snapshot from the server incl. every ledger, and restores atomically. Server GET /admin/backup -> backupVerificat(exec, creeazaScratchMigrat) (probed by a scratch-DB restore before serving); POST /admin/restore -> importBazaSql (atomic, journal-balance-verified). setari.administrare; SQLite-only (501 on PostgreSQL -> CLI/pg_dump). @gr/data createAdminClient + useAdmin hook; SetariPage full-DB path in network mode, DataProvider fallback local. +3 @gr/data tests. Verified LIVE (LAN mode): /admin/backup 200 returned a 36-table snapshot INCLUDING journal_entries/journal_lines/stock_ledger_entries/stock_balances/fiscal_events (restore-probe passed); Setari 'Descarca backup' button fired GET /admin/backup 200 + downloaded. Suite 400->403 passed / 1 skipped.",
+      "risks": [
+        "Backup/restore endpoints are SQLite-only (backupVerificat/importBazaSql use SQLite pragmas); PostgreSQL returns 501 -> use the CLI (npm run backup) / pg_dump. Fine for demo + desktop SQLite; a PG-native path (pg_dump wrapper) is future work.",
+        "Destructive RESTORE was not live-run (gated by a confirm dialog); importBazaSql round-trip is covered by @gr/data backup-sql.test.ts + server backup-cli.test.ts + the admin client test.",
+        "Backup runs in one request over the live exec; for very large PG datasets a streaming/pg_dump path would be needed (SQLite demo/desktop scale is fine)."
+      ],
+      "externalValidation": "Round-trip fidelity + journal-balance invariant proven by @gr/data + server backup tests; live browser E2E in-session only (backup path)."
     }
   ]
 }
