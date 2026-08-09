@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `070b14a` (WIRING-10 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `1a2357e` (WIRING-11 spike code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -114,6 +114,19 @@ planning or repeat earlier phases.
   verified LIVE (`/admin/backup` 200 → 36-table snapshot incl. all ledger tables; Setari
   "Descarca backup" button fired the call). NOTE: destructive RESTORE not live-run (confirm-
   dialog gated); a PostgreSQL-native backup path (pg_dump wrapper) is future work.
+- **UI/transport wiring, slice 11 (WIRING-11, SPIKE)**: `@gr/data/web-sqlite` `fromSqlJs`
+  (`packages/data/src/adapters/sql-js.ts`) — a `SqlExecutor` over sql.js (SQLite in WASM),
+  contract-identical to `fromBetterSqlite`. Proven by 7 `@gr/data` parity tests (incl. the
+  FULL real schema migrating on WASM) + 1 `@gr/application` test (`sqljs-engine.test.ts`:
+  `postDocument` on `fromSqlJs` writes journal + stock + fiscal atomically, balanced). This
+  answers the key unknown — the whole engine runs on a browser executor. NOT wired into the
+  UI yet. To finish LOCAL-mode browser engine: (1) make `db/migrations` importable in the
+  Vite build (e.g. `import.meta.glob('/db/migrations/*.sql', { query: '?raw', eager: true })`
+  or a bundled array); (2) `data-context` builds an ASYNC provider for LOCAL mode (init WASM
+  → migrate → seed → `createSqlProvider(exec)`), with a loading state — today LOCAL mode is a
+  synchronous in-memory provider; (3) persist the sql.js DB (`db.export()` → IndexedDB) on
+  writes + reload on init. Then `useComenzi`/`useRapoarte` LOCAL branches call the real engine
+  and `reconcileSigur` has a local dataset. sql.js stays out of the web bundle until imported.
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -139,8 +152,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **403 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 92, application 60, server 22, ui 22,
+- `npx turbo run test --force` → **411 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 99, application 61, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -170,7 +183,8 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
   + `POST /admin/restore`, WIRING-10). Still generic/not-yet-wired: `reconcileSigur` (conflict-
   aware DATA reconciliation, Phase 12) isn't in the client sync loop (needs local persistence
   first). All of the wired reads apply only in NETWORK mode — local/demo (memory, no engine)
-  still recomputes, so a browser SQLite engine for local mode would unify the two paths.
+  still recomputes; the browser SQLite executor that unifies the two paths is proven
+  (WIRING-11 spike: `fromSqlJs`) but not yet wired into `data-context` LOCAL mode.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -187,13 +201,15 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 Remaining build directions the user selected:
 - **UI/transport wiring** — POST + STORNO + accounting reports + STOCK reports + D300
   decont + document LIST + SAF-T XML + D394/D390 + offline COMMAND queue + full-DB
-  backup/restore are wired (WIRING-2..10). Next slices: (1) a browser SQLite engine for
-  LOCAL mode so the same ledger-reads (and the offline data entry that `reconcileSigur`
-  needs) apply offline — the big architectural unlock, and the thing that makes the whole
-  network-mode/local-mode split disappear; (2) the fiscal_events-native rewrite of D394/D390
-  (working drafts today); (3) a PostgreSQL-native backup path (pg_dump wrapper — the /admin
-  endpoints are SQLite-only today). Verify with the Browser preview (`preview_start`
-  `api-server` + `ui-dev`, LAN mode; login admin/admin123) per the run skill.
+  backup/restore are wired (WIRING-2..10); the browser SQLite executor is PROVEN
+  (WIRING-11 spike). Next slices: (1) **finish WIRING-11** — wire `fromSqlJs` into
+  `data-context` LOCAL mode (async provider init: migrate + seed + `createSqlProvider`;
+  bundle `db/migrations` for Vite; persist to IndexedDB), making LOCAL mode run the real
+  engine offline and unifying the network/local split — the big architectural unlock;
+  (2) the fiscal_events-native rewrite of D394/D390 (working drafts today); (3) a
+  PostgreSQL-native backup path (pg_dump wrapper — the /admin endpoints are SQLite-only
+  today). Verify with the Browser preview (`preview_start` `api-server` + `ui-dev`, LAN
+  mode; login admin/admin123) per the run skill.
   - NOTE 1: restarting/reloading `api-server` (tsx watch) resets the in-memory demo DB +
     SESSION_SECRET — clear `localStorage['gr-user']` + re-login after a server change.
   - NOTE 2 (env quirk seen this session): after MANY tsx-watch reloads a browser tab's UI

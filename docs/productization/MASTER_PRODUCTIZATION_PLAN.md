@@ -295,6 +295,17 @@ specs where applicable. No claim without evidence.
   Remaining: a browser SQLite engine for LOCAL mode (offline data entry + `reconcileSigur`);
   the fiscal_events-native D394/D390 rewrite; a PostgreSQL-native backup path (pg_dump).
 
+### WIRING-11 — browser SQLite executor (fromSqlJs), engine runs on WASM (**spike**)
+- De-risks the biggest remaining item: `@gr/data/web-sqlite` `fromSqlJs` is a `SqlExecutor`
+  over sql.js (SQLite in WebAssembly), contract-identical to `fromBetterSqlite` — proven by
+  7 `@gr/data` parity tests (incl. the FULL real schema migrating on WASM) and 1 `@gr/application`
+  test where `postDocument` on `fromSqlJs` writes journal + stock + fiscal atomically with a
+  balanced journal. The SAME engine as the server runs on a browser executor.
+- Not re-exported from the index (WASM stays out of every bundle; `build:web` OK). This is a
+  SPIKE — the UI integration (async provider init in `data-context` LOCAL mode, bundling
+  `db/migrations` for the browser, IndexedDB persistence across reloads) is the next step,
+  after which the same ledger reads + `reconcileSigur` apply offline.
+
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
   `exportBazaSql`/`importBazaSql` (`packages/data/src/backup-sql.ts`) snapshot the

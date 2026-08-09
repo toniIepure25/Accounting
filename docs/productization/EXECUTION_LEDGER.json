@@ -11,13 +11,13 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 403,
+      "total": 411,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..10: post, storno, persisted journal/stock/decont reports, keyset list, SAF-T XML, D394/D390 server-side, offline command queue, full-DB backup/restore); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike (browser SQLite executor); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 92,
-        "application": 60,
+        "data": 99,
+        "application": 61,
         "server": 22,
         "license": 22,
         "ui": 22,
@@ -1200,6 +1200,30 @@
         "Backup runs in one request over the live exec; for very large PG datasets a streaming/pg_dump path would be needed (SQLite demo/desktop scale is fine)."
       ],
       "externalValidation": "Round-trip fidelity + journal-balance invariant proven by @gr/data + server backup tests; live browser E2E in-session only (backup path)."
+    },
+    {
+      "id": "WIRING-11",
+      "phase": 15,
+      "title": "Browser SQLite executor (fromSqlJs) — engine runs on WASM (spike)",
+      "status": "done",
+      "files": [
+        "packages/data/src/adapters/sql-js.ts",
+        "packages/data/package.json",
+        "packages/application/src/sqljs-engine.test.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/adapters/sql-js.test.ts (7 contract-parity tests)",
+        "packages/application/src/sqljs-engine.test.ts (engine-on-WASM: postDocument writes journal/stock/fiscal, balanced)"
+      ],
+      "commitSha": "1a2357e",
+      "acceptanceEvidence": "De-risks LOCAL (web) mode: running the SAME @gr/application engine + ledger reads offline with no server. fromSqlJs is a SqlExecutor over sql.js (SQLite in WebAssembly), contract-identical to fromBetterSqlite (execute/select/transaction with BEGIN + SAVEPOINT nesting, UNIQUE->ConstraintViolationError, TransactionUsageError after tx ends). Exposed via @gr/data/web-sqlite (NOT re-exported from the index, so WASM stays out of every bundle). Proven: 7 @gr/data contract tests (incl. the FULL real schema — all migrations — applying on WASM + generic-repo read-your-writes) and 1 @gr/application test where createDraftDocument+postDocument on fromSqlJs writes journal_lines+stock_ledger_entries+fiscal_events ATOMICALLY with the journal balanced (debit==credit) — same engine as the server, browser executor. Suite 403->411 passed / 1 skipped; typecheck 11/11; biome clean; build:web OK (sql.js absent from the web bundle).",
+      "risks": [
+        "SPIKE only — NOT wired into the UI yet. Remaining integration: async provider init in data-context (LOCAL mode currently builds a synchronous in-memory provider), bundle the db/migrations SQL for the browser build, and persist the WASM DB to IndexedDB across reloads. Until then LOCAL mode still uses the memory provider (no engine).",
+        "sql.js is a synchronous single-writer WASM instance (like better-sqlite3) — fine for a single-user desktop/web client; not for multi-writer concurrency (that stays server/PostgreSQL).",
+        "WASM init is async and adds ~1-2 MB to the LOCAL-mode bundle when wired — acceptable for an offline-capable app, but a load path to design."
+      ],
+      "externalValidation": "Contract parity + engine-on-WASM proven by @gr/data + @gr/application vitest suites (WASM runs in vitest). No browser E2E yet (integration pending)."
     }
   ]
 }
