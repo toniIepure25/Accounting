@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 386,
+      "total": 387,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..5: post, storno, persisted journal/stock/decont reports); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..6: post, storno, persisted journal/stock/decont reports, keyset document list); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 77,
+        "data": 78,
         "application": 58,
         "server": 22,
         "license": 22,
@@ -1075,6 +1075,30 @@
         "Document list (interogheazaDocumente) still generic-list; offline queue + safe reconciliation still not in the client sync loop."
       ],
       "externalValidation": "Live browser E2E in-session (sale -> D300 decont) against the demo server; not part of automated CI."
+    },
+    {
+      "id": "WIRING-6",
+      "phase": 15,
+      "title": "Keyset document list wired into DocumentEditor (network mode, RK-13)",
+      "status": "done",
+      "files": [
+        "server/src/index.ts",
+        "packages/data/src/api-rapoarte.ts",
+        "packages/ui/src/hooks/useDocumenteTip.ts",
+        "packages/ui/src/components/DocumentEditor.tsx"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/journal-repo.test.ts (documente client)",
+        "live browser E2E (LAN mode)"
+      ],
+      "commitSha": "f5932e7",
+      "acceptanceEvidence": "DocumentEditor loaded ALL documents (useCollection(db.documente).list()) then filtered by tip in the client. In network mode it now uses the server keyset query: filtering (tip + firma) + pagination on the SERVER (indexed, bounded LIMIT), client accumulates bounded pages — no full-table read + JS filter on the hot path (closes the RK-13 UI gap). Server GET /reports/documents (interogheazaDocumente, firma-scoped from the session, keyset cursor via cursor_data/cursor_id, LIMIT 1..500) -> { randuri, urmatorCursor }; @gr/data createReportsClient.documente(filtru,paginare); @gr/ui useDocumenteTip loops bounded keyset pages per tip (local fallback list()+filter). DocumentEditor uses it for the main list AND the NIR source picker; writes still go through db.documente.* + reload. +1 @gr/data test; DocumentEditor + UI suite green (no regression). Verified LIVE (LAN mode): Receptii marfa listed NIR-2026-000001 via /reports/documents?tip=receptie_furnizor (200), and the Facturi furnizori NIR picker populated 'NIR-2026-000001 · Lemn Prod SRL' via a second tip=receptie_furnizor&stare=validat query. Suite 386->387 passed / 1 skipped.",
+      "risks": [
+        "Network mode still accumulates ALL pages of a tip into the client (bounded, indexed queries, but full set in memory) — a true windowed/infinite-scroll UI would page on demand; acceptable now, the DB-side unbounded scan is gone.",
+        "Reads keyset only in NETWORK mode; local/demo still list()+filter. SAF-T XML export + D394/D390 still recompute from documents."
+      ],
+      "externalValidation": "Live browser E2E in-session (document list + source picker) against the demo server; not part of automated CI."
     }
   ]
 }

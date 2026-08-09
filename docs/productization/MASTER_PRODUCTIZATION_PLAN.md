@@ -235,8 +235,18 @@ specs where applicable. No claim without evidence.
   unchanged.
 - Verified live (LAN mode): a retail cafea sale (11% reduced VAT) showed in the D300 as
   TVA colectata 6.94 / de plata 6.94, cota 11% baza 63.06 TVA 6.94, from
-  `GET /reports/decont` (200). Remaining UI wiring: D394 / D390 / SAF-T XML off the
-  ledgers, keyset document list, offline queue + safe reconciliation.
+  `GET /reports/decont` (200).
+
+### WIRING-6 — Keyset document list wired into the UI (RK-13) — **done**
+- Server `GET /reports/documents` → `interogheazaDocumente` (firma-scoped, keyset cursor,
+  bounded LIMIT); `@gr/data createReportsClient.documente()`; `@gr/ui useDocumenteTip`
+  loops bounded keyset pages per tip (local fallback list()+filter). `DocumentEditor`
+  uses it for the main list and the NIR source picker — server-side filtering replaces
+  the full `list()` + client-filter on the document hot path.
+- Verified live (LAN mode): Receptii marfa listed NIR-2026-000001 via
+  `/reports/documents?tip=receptie_furnizor` (200), and the Facturi furnizori NIR picker
+  populated via a second `tip=receptie_furnizor&stare=validat` query. Remaining UI wiring:
+  SAF-T XML export + D394 / D390 off the ledgers, offline queue + safe reconciliation.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
