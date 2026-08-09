@@ -225,8 +225,18 @@ specs where applicable. No claim without evidence.
   fallback local), so balanta stocurilor / fise de magazie / rulaje reflect the ledger.
 - Verified live (LAN mode): a +10 MDF18 plus/minus showed in Balanta stocurilor
   (10, PMP 70.00, 700.00) and Fise de magazie (Intrare 10, 700.00) from
-  `GET /reports/stock` (200). Remaining UI wiring: fiscal decont (D300) / SAF-T pages
-  off `fiscal_events`, keyset document list, offline queue + safe reconciliation.
+  `GET /reports/stock` (200).
+
+### WIRING-5 — D300 decont off the persisted fiscal-event ledger — **done**
+- Server `GET /reports/decont?de=&pana=` → `genereazaDecontDinRegistre` (`@gr/application`,
+  firma-scoped, no NIR double-counting); `@gr/data createReportsClient.decont()`;
+  `DecontTvaPage` reads it in network mode (recompute fallback local), reacting to the
+  date range. `DecontDinEvenimente` shares `decontTVADetaliat`'s shape, so the page is
+  unchanged.
+- Verified live (LAN mode): a retail cafea sale (11% reduced VAT) showed in the D300 as
+  TVA colectata 6.94 / de plata 6.94, cota 11% baza 63.06 TVA 6.94, from
+  `GET /reports/decont` (200). Remaining UI wiring: D394 / D390 / SAF-T XML off the
+  ledgers, keyset document list, offline queue + safe reconciliation.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

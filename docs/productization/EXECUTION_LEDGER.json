@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 385,
+      "total": 386,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2/3/4: post, storno, persisted journal + stock reports); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..5: post, storno, persisted journal/stock/decont reports); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 76,
+        "data": 77,
         "application": 58,
         "server": 22,
         "license": 22,
@@ -1052,6 +1052,29 @@
         "Remaining recompute/generic in the UI: fiscal decont (D300) / SAF-T pages, and the document list (interogheazaDocumente). Offline queue + safe reconciliation still not in the client sync loop."
       ],
       "externalValidation": "Live browser E2E in-session (post -> stock reports) against the demo server; not part of automated CI."
+    },
+    {
+      "id": "WIRING-5",
+      "phase": 15,
+      "title": "D300 decont reads the persisted fiscal-event ledger (network mode)",
+      "status": "done",
+      "files": [
+        "server/src/index.ts",
+        "packages/data/src/api-rapoarte.ts",
+        "packages/ui/src/pages/fiscal.tsx"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/journal-repo.test.ts (decont client)",
+        "live browser E2E (LAN mode)"
+      ],
+      "commitSha": "aa35f49",
+      "acceptanceEvidence": "The Decont TVA (D300) page recomputed VAT collected/deductible from documents (decontTVADetaliat). In network mode it now reads the decont built from the persisted fiscal_events ledger (no NIR double-counting) via the existing @gr/application genereazaDecontDinRegistre. Server GET /reports/decont?de=&pana= (firma-scoped, contabilitate.vizualizare); @gr/data createReportsClient.decont({de,pana}) (DecontDinEvenimente == decontTVADetaliat shape, so the page is unchanged); DecontTvaPage reads it in network mode reacting to the date range (recompute fallback local). +1 @gr/data test. Verified LIVE (LAN mode): a retail cafea sale (11% reduced VAT) showed in the D300 as TVA colectata 6.94 / de plata 6.94, cota 11% baza 63.06 TVA 6.94, from GET /reports/decont (200). Suite 385->386 passed / 1 skipped.",
+      "risks": [
+        "Reads the ledger only in NETWORK mode; local/demo still recomputes. D394/D390 pages and the SAF-T XML export still recompute from documents (SAF-T XML would need a server-side XML endpoint from genereazaSaftDinRegistre).",
+        "Document list (interogheazaDocumente) still generic-list; offline queue + safe reconciliation still not in the client sync loop."
+      ],
+      "externalValidation": "Live browser E2E in-session (sale -> D300 decont) against the demo server; not part of automated CI."
     }
   ]
 }

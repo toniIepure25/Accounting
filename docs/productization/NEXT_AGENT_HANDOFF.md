@@ -5,7 +5,7 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `b5c9763` (WIRING-4 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `aa35f49` (WIRING-5 code) before the doc commit (the doc commit is the tip).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -59,6 +59,13 @@ planning or repeat earlier phases.
   network mode (recompute fallback local; nomenclatoare from provider in both). +3
   @gr/data tests + verified LIVE (+10 MDF18 → Balanta stocurilor 10/PMP 70.00/700.00 +
   Fise de magazie Intrare 10/700.00 from `/reports/stock`). See `packages/ui/src/hooks/useStoc.ts`.
+- **UI/transport wiring, slice 5 (WIRING-5)**: the D300 decont reads the persisted
+  fiscal-event ledger — server `GET /reports/decont?de=&pana=` → `@gr/application`
+  `genereazaDecontDinRegistre` (firma-scoped, no NIR double-counting); `@gr/data`
+  `createReportsClient.decont()`; `DecontTvaPage` reads it in network mode (recompute
+  fallback local). +1 @gr/data test + verified LIVE (cafea 11% sale → D300 colectata
+  6.94 / de plata 6.94, cota 11% baza 63.06). See `packages/ui/src/pages/fiscal.tsx`,
+  `server/src/index.ts` (`/reports/decont`).
 - **Phase 16 — backup / restore / DR** (done): `packages/data/src/backup-sql.ts` —
   `exportBazaSql`/`importBazaSql` snapshot the WHOLE database including the persisted
   engine ledgers (stock/journal/fiscal/e-Factura/production) that the provider backup
@@ -84,8 +91,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **385 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 76, application 58, server 22, ui 22,
+- `npx turbo run test --force` → **386 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 77, application 58, server 22, ui 22,
   license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -105,13 +112,13 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
   network mode (WIRING-2/3); the ACCOUNTING reports (registru-jurnal / cartea mare /
   balanta / fisa via `useContabilitate`) read the persisted journal
   (`GET /reports/journal`); the STOCK reports (balanta stocurilor / fise de magazie /
-  rulaje via `useStoc`) read the persisted stock ledger (`GET /reports/stock`, WIRING-4).
-  Still recompute/generic: the fiscal decont (D300) / SAF-T pages; no e-Factura / SAF-T
-  / decont panels driving the commands; the safe reconciliation + offline command queue
-  (Phase 12) aren't in the client sync loop; `interogheazaDocumente` isn't yet the
-  document-list source in the UI. All of these read the ledger only in NETWORK mode —
-  local/demo (memory, no engine) still recomputes, so a browser SQLite engine for local
-  mode would unify the two paths.
+  rulaje via `useStoc`) read the persisted stock ledger (`GET /reports/stock`, WIRING-4);
+  the D300 decont reads the persisted fiscal-event ledger (`GET /reports/decont`, WIRING-5).
+  Still recompute/generic: the D394 / D390 pages and the SAF-T XML export; the safe
+  reconciliation + offline command queue (Phase 12) aren't in the client sync loop;
+  `interogheazaDocumente` isn't yet the document-list source in the UI. All of these read
+  the ledger only in NETWORK mode — local/demo (memory, no engine) still recomputes, so a
+  browser SQLite engine for local mode would unify the two paths.
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -126,16 +133,17 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
 
 ## Next priority (user chose UI-wiring + Mobila + Ops; Mobila + P16 + P17-R1 done)
 Remaining build directions the user selected:
-- **UI/transport wiring** — POST + STORNO + accounting reports + STOCK reports are
-  wired (WIRING-2/3/4). Next slices: make the fiscal decont (D300) / SAF-T pages read
-  `fiscal_events` (`genereazaDecontDinRegistre` / `genereazaSaftDinRegistre` already
-  exist in `@gr/application`; add a `GET /reports/decont` + `/reports/saft` mirroring
-  `/reports/journal`, then point the fiscal pages at them in network mode); wire the
-  keyset document query (`interogheazaDocumente`) into the document list; wire the
-  offline command queue + safe reconciliation into the client sync loop; expose a
-  backup/restore action in the UI (`backupVerificat`/`importBazaSql` ready). Verify with
-  the Browser preview (`preview_start` `api-server` + `ui-dev`, LAN mode; login
-  admin/admin123) per the run skill. NOTE: restarting `api-server` invalidates the
+- **UI/transport wiring** — POST + STORNO + accounting reports + STOCK reports + D300
+  decont are wired (WIRING-2..5). Next slices: (1) wire the keyset document query
+  (`interogheazaDocumente`, already in `@gr/data`) into the document list — add a
+  paginated `GET /reports/documents` (or reuse the generic list with cursor params) and
+  point the documents pages at it; (2) the SAF-T XML export off `fiscal_events`/journal
+  — `genereazaSaftDinRegistre` exists in `@gr/application`; add a server endpoint that
+  returns the XML and have `SaftPage` download it in network mode; (3) D394/D390 off the
+  fiscal ledger; (4) the offline command queue + safe reconciliation into the client sync
+  loop; (5) a backup/restore action in the UI (`backupVerificat`/`importBazaSql` ready).
+  Verify with the Browser preview (`preview_start` `api-server` + `ui-dev`, LAN mode;
+  login admin/admin123) per the run skill. NOTE: restarting `api-server` invalidates the
   session token (new SESSION_SECRET) — clear `localStorage['gr-user']` + re-login.
 - **Ops (Phase 17 — remaining)** — signed installer/updater for the Tauri desktop
   app (auto-update channel), a PostgreSQL-native backup exporter mirroring
