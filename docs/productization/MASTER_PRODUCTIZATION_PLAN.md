@@ -325,9 +325,17 @@ specs where applicable. No claim without evidence.
   offline, exactly like the server. `@gr/application` added to `@gr/ui` deps (bundle-safe).
 - Proven by a `@gr/ui` node-WASM test (post on the real local factory writes journal_lines +
   stock_ledger_entries + fiscal_events, journal balanced) + live browser smoke (Dashboard +
-  DocumentEditor render, no errors). NEXT: local ledger REPORTS (`useRapoarte` local branch
-  reading the local exec) so reports read the local registers instead of recomputing; then
-  `reconcileSigur` has a local dataset.
+  DocumentEditor render, no errors).
+
+### WIRING-14 — local ledger REPORTS: local-sqlite reads the local registers — **done**
+- Completes local-sqlite ↔ network parity: `createLocalReportsClient` implements `ClientRapoarte`
+  over the in-browser exec (noteContabile / stoc / decont / documente-keyset / saft / d394 / d390,
+  firma-scoped), and `useRapoarte`'s local-sqlite branch returns it. After WIRING-13 posts write
+  the ledgers locally, the reports now READ them instead of recomputing from documents.
+- Proven by a `@gr/ui` node-WASM test (post locally → journal notes present, stock sold=10, decont
+  TVA deductibila=2100, firma-scoping isolates) + live smoke (report pages render, no errors).
+  **local-sqlite now fully mirrors NETWORK** — same `@gr/application` engine, offline, in-browser.
+  NEXT: wire `reconcileSigur` into a local↔server sync path (it finally has a local ledger).
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

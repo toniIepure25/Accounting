@@ -11,16 +11,16 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 416,
+      "total": 417,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike + WIRING-12/13 local-sqlite (persistent provider + local command engine); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike + WIRING-12/13/14 local-sqlite (persistent provider + local command engine + local ledger reports); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
         "data": 101,
         "application": 61,
         "server": 22,
         "license": 22,
-        "ui": 25,
+        "ui": 26,
         "sync": 17,
         "fiscal-ro": 14,
         "auth": 11,
@@ -1279,6 +1279,26 @@
         "@gr/application is now in the web bundle (lazy via local-sqlite path) — bundle-safe (no node-only runtime deps), build:web verified."
       ],
       "externalValidation": "In-browser engine-writes-ledgers proven by @gr/ui node-WASM unit test; live browser smoke (no errors) in-session."
+    },
+    {
+      "id": "WIRING-14",
+      "phase": 15,
+      "title": "local ledger REPORTS — local-sqlite reads the local registers (engine parity)",
+      "status": "done",
+      "files": ["packages/ui/src/lib/local-rapoarte.ts", "packages/ui/src/hooks/useRapoarte.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/ui/src/lib/local-rapoarte.test.ts (post locally -> reports reflect written registers; firma-scoped)",
+        "live browser smoke (local-sqlite: report pages render, no errors)"
+      ],
+      "commitSha": "5796af3",
+      "acceptanceEvidence": "Completes local-sqlite engine parity with network mode. WIRING-13 made local-sqlite POST via @gr/application (writing journal/stock/fiscal locally); now the REPORTS read those same local registers instead of recomputing from documents. createLocalReportsClient(exec, firmaId) implements ClientRapoarte over the in-browser exec: noteContabile (listeazaNoteContabilePersistate), stoc (miscari+solduri), decont (genereazaDecontDinRegistre), documente (interogheazaDocumente keyset), saft (genereazaSaftDinRegistre), d394/d390 (genereazaD394/genereazaD390) — firma-scoped, firmaId read live. useRapoarte local-sqlite branch returns it; demo stays null; network unchanged. +1 @gr/ui test (post locally -> journal notes present, stock sold=10, decont TVA deductibila=2100, firma-scoping isolates). Suite 416->417 / 1 skipped; typecheck 11/11; biome clean; build:web OK. Verified LIVE (local-sqlite): report pages render with the local reports client, no console errors. local-sqlite now fully mirrors NETWORK: post writes the ledgers (WIRING-13), reports read them (WIRING-14) — same @gr/application engine, offline, in-browser.",
+      "risks": [
+        "reconcileSigur (conflict-aware local<->server sync) is still NOT in a live sync path — but local-sqlite now HAS a real local ledger/dataset for it to reconcile; that's the next slice.",
+        "Seeded local-sqlite documents were inserted via CRUD (no ledgers), so reports are empty until a document is posted through the engine locally — correct behavior, but a first-run user sees empty ledger reports until they post.",
+        "The live report-generation click (e.g. SAF-T Genereaza) wasn't driven to completion (fiddly); the reports-read-registers behavior is proven by the node-WASM unit test running the exact production factory + command + reports clients."
+      ],
+      "externalValidation": "Local reports-read-registers proven by @gr/ui node-WASM unit test; live browser smoke (report pages render, no errors) in-session."
     }
   ]
 }
