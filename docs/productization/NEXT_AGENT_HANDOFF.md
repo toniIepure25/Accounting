@@ -5,7 +5,11 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `5796af3` (WIRING-14 code) before the doc commit (the doc commit is the tip).
+- HEAD SHA: `ec5cac4` — WIRING-14 (5796af3) + docs (6783e5a) + two review fixes on the
+  local-sqlite persistence layer: `c9d24d4` (autosave must not `db.export()` mid-transaction —
+  guarded by a `txActiv` counter) and `ec5cac4` (tie the `execLocalCurent` singleton to the
+  MOUNTED provider so React StrictMode's double-init can't leave commands/reports on a
+  different in-browser DB than the provider). Both worktree-clean, tests 417/1 green.
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
