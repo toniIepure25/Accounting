@@ -347,6 +347,18 @@ specs where applicable. No claim without evidence.
   is the follow-up. Note: ledgers stay command-generated (replay via the offline queue,
   WIRING-9); the sync should carry DOCUMENTS + nomenclatoare, not LWW-sync ledger rows.
 
+### WIRING-16 — entity versioning foundation (repo stamps version/updatedAt) — **done**
+- Discovered while scoping the sync wiring: the sync engine needs `Versionat` rows, but entities
+  never exposed OR populated `version`/`updatedAt`/`deletedAt` (schemas omitted them; the CRUD path
+  only touched schema fields) — every row sat at `version=1`/`updatedAt=''` forever. **User chose to
+  add entity versioning.** Schema-driven so it rolls out incrementally: `@gr/core-domain` `campuriSync`
+  (shared Zod fragment) is spread into a schema to opt in; `createSqlRepository` then STAMPS
+  `version=1`+`updatedAt=now` on create and `version+1`+`updatedAt=now` on update (entities without the
+  fields unchanged; an EXPLICIT `updatedAt` from the caller — the future sync writing a server row
+  verbatim — is preserved, not re-stamped). Partener migrated as proof; `MemorySeed` sync fields
+  optional. +4 `@gr/data` tests. NEXT: migrate the remaining sync-relevant entities, add
+  tombstones to `remove()`, then wire the local↔server sync.
+
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
   `exportBazaSql`/`importBazaSql` (`packages/data/src/backup-sql.ts`) snapshot the

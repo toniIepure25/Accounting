@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 420,
+      "total": 424,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine; +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine + WIRING-16 entity versioning foundation; +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 101,
+        "data": 105,
         "application": 61,
         "server": 22,
         "license": 22,
@@ -1317,6 +1317,30 @@
         "Ledgers (journal/stock/fiscal) are server-authoritative and command-generated; the sync should carry DOCUMENTS + nomenclatoare and let the engine regenerate ledgers via commands (offline queue, WIRING-9), not LWW-sync ledger rows — the wiring must choose which resources sync as data vs replay as commands."
       ],
       "externalValidation": "Reconcile safety + orchestration proven by @gr/sync unit tests (reconcileSigur policy tests + engine tests)."
+    },
+    {
+      "id": "WIRING-16",
+      "phase": 15,
+      "title": "entity versioning foundation — repo stamps version/updatedAt (schema-driven)",
+      "status": "done",
+      "files": [
+        "packages/core-domain/src/entities/sync-fields.ts",
+        "packages/core-domain/src/entities/partener.ts",
+        "packages/data/src/generic-sql-repo.ts",
+        "packages/data/src/provider.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/generic-sql-repo.test.ts (create stamps, update bumps, verbatim-preserve, non-sync unaffected)"
+      ],
+      "commitSha": "d656a10",
+      "acceptanceEvidence": "Unblocks real local<->server sync (WIRING-15 needed Versionat rows, but entities never exposed OR populated version/updatedAt/deletedAt — the CRUD path only touched schema fields and schemas omitted the sync columns, so every row stayed version=1/updatedAt='' forever; discovered while scoping the sync wiring). SCHEMA-DRIVEN foundation for incremental rollout: core-domain campuriSync (shared Zod fragment) entities spread into their schema to opt in; createSqlRepository detects those fields and STAMPS version=1+updatedAt=now on create, version+1+updatedAt=now on update (entities without the fields unchanged; `now` injectable for tests); an EXPLICIT updatedAt from the caller (future sync writing a server row verbatim) is PRESERVED not re-stamped. Partener migrated as proof (sync fields omitted from its Input schema); MemorySeed makes sync fields optional so demo/future seed literals need not declare them (SQL seed-create stamps them). +4 @gr/data tests. Suite 420->424/1; typecheck 11/11; biome clean; build:web OK.",
+      "risks": [
+        "Only Partener migrated so far. The remaining sync-relevant entities (produs, document, gestiune, nomenclatoare, firma, casa/banca, mijloc-fix) still need `campuriSync` before a full sync can carry them — the next increments.",
+        "remove() is still a HARD delete — tombstone/soft-delete (deletedAt on remove + list filtering) for propagating deletions across sync is a later increment.",
+        "The in-memory (demo) provider does not stamp/fill sync fields (demo doesn't sync); only the SQL repo stamps. Fine — demo mode isn't a sync participant."
+      ],
+      "externalValidation": "Stamping + verbatim-preserve proven by @gr/data unit tests."
     }
   ]
 }
