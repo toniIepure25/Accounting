@@ -8,7 +8,7 @@ import initSqlJs from 'sql.js';
 import { describe, expect, it } from 'vitest';
 import { createLocalCommandClient } from './local-comenzi.js';
 import { createLocalReportsClient } from './local-rapoarte.js';
-import { creeazaProviderLocalSqlite, getExecLocal, stocatorMemorieBaza } from './local-sqlite.js';
+import { creeazaProviderLocalSqlite, stocatorMemorieBaza } from './local-sqlite.js';
 
 const require = createRequire(import.meta.url);
 const DIST = dirname(require.resolve('sql.js'));
@@ -16,15 +16,13 @@ const NOW = '2025-09-10T09:00:00.000Z';
 
 describe('createLocalReportsClient — rapoartele local-sqlite citesc registrele locale', () => {
   it('dupa o postare locala, jurnalul + stocul + decontul reflecta registrele scrise', async () => {
-    await creeazaProviderLocalSqlite({
+    const { exec } = await creeazaProviderLocalSqlite({
       initSqlJs,
       wasmLocateFile: (f: string) => join(DIST, f),
       seed: false,
       debounceMs: 5,
       stocator: stocatorMemorieBaza(),
     });
-    const exec = getExecLocal();
-    if (!exec) throw new Error('exec local neinitializat');
     const repos = withExecutor(exec);
 
     const firma = await repos.firme.create({ cod: 'A', denumire: 'Firma A', cui: 'RO1' });

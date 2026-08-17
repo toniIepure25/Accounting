@@ -30,14 +30,21 @@ export interface StocatorBaza {
 
 /**
  * Executorul SQLite-WASM al modului `local-sqlite` CURENT (singleton — un singur
- * motor local per aplicatie). Setat de `creeazaProviderLocalSqlite`; citit de
- * `useComenzi`/`useRapoarte` ca sa ruleze motorul @gr/application + citirile din
- * registre pe ACELASI executor ca providerul. `null` cat timp nu s-a initializat
- * (dar `data-context` blocheaza randarea pana atunci, deci consumatorii il vad gata).
+ * motor local per aplicatie). Citit de `useComenzi`/`useRapoarte` ca sa ruleze
+ * motorul @gr/application + citirile din registre pe ACELASI executor ca providerul.
+ *
+ * IMPORTANT: `creeazaProviderLocalSqlite` NU-l seteaza singura — `data-context` il
+ * seteaza (`setExecLocal`) DOAR pentru providerul care „castiga", sub aceeasi garda
+ * de liveness ca `setBase`. Altfel, in React StrictMode (dublu-mount in dev) doua
+ * initializari ar putea lasa singletonul pe un executor DIFERIT de providerul montat
+ * — comenzile/rapoartele ar lucra pe alta baza in memorie decat providerul.
  */
 let execLocalCurent: SqlExecutor | null = null;
 export function getExecLocal(): SqlExecutor | null {
   return execLocalCurent;
+}
+export function setExecLocal(exec: SqlExecutor | null): void {
+  execLocalCurent = exec;
 }
 
 export interface OptiuniLocalSqlite {
@@ -145,12 +152,13 @@ async function seedDemo(provider: DataProvider, exec: SqlExecutor): Promise<void
 /**
  * Construieste providerul LOCAL peste SQLite-WASM: incarca instantaneul persistat
  * (daca exista), aplica migratiile (idempotent), seed la prima pornire, apoi
- * ataseaza auto-salvarea. Intoarce un `DataProvider` obisnuit — restul aplicatiei
- * nu stie ca motorul ruleaza in browser.
+ * ataseaza auto-salvarea. Intoarce providerul (restul aplicatiei nu stie ca motorul
+ * ruleaza in browser) SI executorul — pe care `data-context` il inregistreaza ca
+ * singleton (`setExecLocal`) doar pentru providerul montat.
  */
 export async function creeazaProviderLocalSqlite(
   optiuni: OptiuniLocalSqlite = {},
-): Promise<DataProvider> {
+): Promise<{ provider: DataProvider; exec: SqlExecutor }> {
   const stocator = optiuni.stocator ?? stocatorIndexedDb();
   const debounceMs = optiuni.debounceMs ?? 250;
 
@@ -204,7 +212,7 @@ export async function creeazaProviderLocalSqlite(
   }
 
   const execFinal = cuAutosalvare(execBrut, programeazaSalvare, txActiv);
-  // Expus pentru useComenzi/useRapoarte (motor + rapoarte pe ACELASI executor).
-  execLocalCurent = execFinal;
-  return createSqlProvider(execFinal);
+  // Intoarce si executorul: `data-context` seteaza singletonul (`setExecLocal`) doar
+  // pentru providerul montat, evitand nepotrivirea din StrictMode (vezi setExecLocal).
+  return { provider: createSqlProvider(execFinal), exec: execFinal };
 }

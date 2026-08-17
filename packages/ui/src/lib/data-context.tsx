@@ -20,7 +20,7 @@ import {
 import { useAuth } from './auth-context.js';
 import { EVENIMENT_FIRMA_SCHIMBATA, LS_FIRMA } from './firma-context.js';
 import { useLicense } from './license-context.js';
-import { creeazaProviderLocalSqlite } from './local-sqlite.js';
+import { creeazaProviderLocalSqlite, setExecLocal } from './local-sqlite.js';
 
 const DataContext = createContext<DataProvider | null>(null);
 
@@ -100,7 +100,11 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     if (!modLocalSqlite) return;
     let viu = true;
     creeazaProviderLocalSqlite()
-      .then((p) => viu && setBase(() => p))
+      .then(({ provider: p, exec }) => {
+        if (!viu) return; // init anulat (ex. dublu-mount StrictMode) — ignora acest exec
+        setExecLocal(exec); // singletonul + providerul montat raman ACELASI executor
+        setBase(() => p);
+      })
       .catch((e) => {
         console.error('init local-sqlite esuat — cad pe providerul in-memory:', e);
         if (viu) setBase(() => createMemoryProvider(demoSeed));

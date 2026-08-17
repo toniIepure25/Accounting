@@ -16,7 +16,7 @@ const asteapta = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe('creeazaProviderLocalSqlite — motor SQLite-WASM in modul local', () => {
   it('prima pornire: aplica schema + seed demo (nomenclatoarele nu-s goale)', async () => {
-    const provider = await creeazaProviderLocalSqlite({
+    const { provider } = await creeazaProviderLocalSqlite({
       ...injectii,
       stocator: stocatorMemorieBaza(),
     });
@@ -26,7 +26,7 @@ describe('creeazaProviderLocalSqlite — motor SQLite-WASM in modul local', () =
 
   it('persista in stocator si datele supravietuiesc unei reincarcari', async () => {
     const stocator = stocatorMemorieBaza();
-    const p1 = await creeazaProviderLocalSqlite({ ...injectii, stocator });
+    const { provider: p1 } = await creeazaProviderLocalSqlite({ ...injectii, stocator });
 
     await p1.parteneri.create({ tip: 'client', denumire: 'Client Persistat SRL' });
     await asteapta(30); // lasa debounce-ul sa salveze
@@ -35,7 +35,7 @@ describe('creeazaProviderLocalSqlite — motor SQLite-WASM in modul local', () =
     expect(bytes).not.toBeNull();
 
     // „Reincarcare": provider NOU peste instantaneul salvat, fara re-seed.
-    const p2 = await creeazaProviderLocalSqlite({
+    const { provider: p2 } = await creeazaProviderLocalSqlite({
       ...injectii,
       stocator: stocatorMemorieBaza(bytes),
       seed: false,

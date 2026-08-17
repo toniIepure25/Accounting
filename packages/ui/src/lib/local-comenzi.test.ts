@@ -7,7 +7,7 @@ import { withExecutor } from '@gr/data';
 import initSqlJs from 'sql.js';
 import { describe, expect, it } from 'vitest';
 import { createLocalCommandClient } from './local-comenzi.js';
-import { creeazaProviderLocalSqlite, getExecLocal, stocatorMemorieBaza } from './local-sqlite.js';
+import { creeazaProviderLocalSqlite, stocatorMemorieBaza } from './local-sqlite.js';
 
 const require = createRequire(import.meta.url);
 const DIST = dirname(require.resolve('sql.js'));
@@ -21,9 +21,10 @@ const injectii = {
 
 describe('createLocalCommandClient — motorul @gr/application in modul local-sqlite', () => {
   it('posteaza pe executorul local: scrie jurnal + stoc + fiscal (nu doar flip de stare)', async () => {
-    await creeazaProviderLocalSqlite({ ...injectii, stocator: stocatorMemorieBaza() });
-    const exec = getExecLocal();
-    if (!exec) throw new Error('exec local neinitializat');
+    const { exec } = await creeazaProviderLocalSqlite({
+      ...injectii,
+      stocator: stocatorMemorieBaza(),
+    });
     const repos = withExecutor(exec);
 
     const firma = await repos.firme.create({ cod: 'A', denumire: 'Firma A', cui: 'RO1' });
