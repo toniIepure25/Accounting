@@ -34,12 +34,20 @@ export function createSqlRepository<T extends { id: string }>(
   exec: SqlExecutor,
   table: string,
   schema: ZodTypeAny,
+  now: () => string = () => new Date().toISOString(),
 ): Repository<T, Partial<T>> {
   // biome-ignore lint/suspicious/noExplicitAny: acces la shape-ul ZodObject
   const shape = (schema as any).shape as Record<string, ZodTypeAny>;
   const props = Object.keys(shape);
   const kinds: Record<string, Kind> = Object.fromEntries(props.map((p) => [p, kindOf(shape[p]!)]));
   const col = (p: string) => camelToSnake(p);
+
+  // Entitatile care declara campurile de sincronizare in schema (vezi core-domain
+  // `campuriSync`) primesc `version`/`updatedAt` STAMPILATE automat la scriere:
+  // version=1 la creare, +1 la fiecare update, updatedAt=acum. Exceptie: cand
+  // apelantul furnizeaza EXPLICIT `updatedAt` (ex. sincronizarea scrie un rand de
+  // pe server VERBATIM), valorile lui se pastreaza — nu re-stampilam.
+  const areSync = 'version' in shape && 'updatedAt' in shape && 'deletedAt' in shape;
 
   const conv = (p: string, v: unknown) =>
     kinds[p] === 'bool' ? (v ? 1 : 0) : kinds[p] === 'json' ? JSON.stringify(v) : v;
@@ -74,8 +82,14 @@ export function createSqlRepository<T extends { id: string }>(
     },
     async create(input) {
       // biome-ignore lint/suspicious/noExplicitAny: id optional in input
-      const id = (input as any).id ?? crypto.randomUUID();
-      const entity = schema.parse({ ...input, id }) as T;
+      const inp = input as any;
+      const id = inp.id ?? crypto.randomUUID();
+      const parsat = schema.parse({ ...input, id }) as T;
+      // Stampilare la creare, doar daca apelantul NU a dat explicit `updatedAt`.
+      const entity =
+        areSync && inp.updatedAt === undefined
+          ? ({ ...parsat, version: 1, updatedAt: now(), deletedAt: inp.deletedAt ?? null } as T)
+          : parsat;
       const cols = props.map(col).join(', ');
       const placeholders = props.map(() => '?').join(', ');
       // biome-ignore lint/suspicious/noExplicitAny: acces dinamic
@@ -86,7 +100,14 @@ export function createSqlRepository<T extends { id: string }>(
     async update(id, patch) {
       const current = await this.getById(id);
       if (!current) throw new Error(`${table}: id ${id} inexistent`);
-      const next = schema.parse({ ...current, ...patch, id }) as T;
+      const parsat = schema.parse({ ...current, ...patch, id }) as T;
+      // Bump `version` + `updatedAt`, doar daca patch-ul nu da explicit `updatedAt`
+      // (sincronizarea scrie versiunea serverului verbatim -> nu re-stampilam).
+      // biome-ignore lint/suspicious/noExplicitAny: acces la campurile de sync
+      const next =
+        areSync && (patch as any).updatedAt === undefined
+          ? ({ ...parsat, version: ((current as any).version ?? 0) + 1, updatedAt: now() } as T)
+          : parsat;
       const editable = props.filter((p) => p !== 'id');
       const assignments = editable.map((p) => `${col(p)} = ?`).join(', ');
       // biome-ignore lint/suspicious/noExplicitAny: acces dinamic

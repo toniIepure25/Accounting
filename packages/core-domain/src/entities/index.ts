@@ -1,3 +1,4 @@
+export * from './sync-fields.js';
 export * from './gestiune.js';
 export * from './partener.js';
 export * from './produs.js';

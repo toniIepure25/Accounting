@@ -103,11 +103,18 @@ export interface DeploymentConfig {
 /** Cheile DataProvider care sunt repository-uri (exclude `numerotare`). */
 type RepoKey = Exclude<keyof DataProvider, 'numerotare'>;
 
-/** Semintele demo (in-memory), keyed pe numele repository-ului. */
+/**
+ * Semintele demo (in-memory), keyed pe numele repository-ului. Campurile de
+ * sincronizare (`version`/`updatedAt`/`deletedAt`) sunt OPTIONALE in seed —
+ * datele demo nu le declara, iar repository-ul SQL le stampileaza la seed-create
+ * (createMemoryProvider le lasa asa cum sunt; demo-ul nu sincronizeaza).
+ */
 export type MemorySeed = {
-  [K in RepoKey]?: readonly EntityOf<DataProvider[K]>[];
+  [K in RepoKey]?: readonly FaraSync<EntityOf<DataProvider[K]>>[];
 };
 type EntityOf<R> = R extends Repository<infer T, infer _I> ? T : never;
+type CheieSync = 'version' | 'updatedAt' | 'deletedAt';
+type FaraSync<E> = Omit<E, CheieSync> & Partial<Pick<E, Extract<keyof E, CheieSync>>>;
 
 interface TableDef {
   table: string;

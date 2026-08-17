@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /** Partener comercial: furnizor, client sau ambele. */
 export const TipPartener = z.enum(['furnizor', 'client', 'ambele']);
@@ -43,9 +44,16 @@ export const PartenerSchema = z.object({
   email: z.string().email().nullable().default(null),
   platitorTva: z.boolean().default(true),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 
 export type Partener = z.infer<typeof PartenerSchema>;
 
-export const PartenerInputSchema = PartenerSchema.omit({ id: true });
+/** Input de creare: fara id si fara campurile de sync (le stampileaza repository-ul). */
+export const PartenerInputSchema = PartenerSchema.omit({
+  id: true,
+  version: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type PartenerInput = z.infer<typeof PartenerInputSchema>;
