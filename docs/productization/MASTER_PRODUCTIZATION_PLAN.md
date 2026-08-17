@@ -335,7 +335,17 @@ specs where applicable. No claim without evidence.
 - Proven by a `@gr/ui` node-WASM test (post locally → journal notes present, stock sold=10, decont
   TVA deductibila=2100, firma-scoping isolates) + live smoke (report pages render, no errors).
   **local-sqlite now fully mirrors NETWORK** — same `@gr/application` engine, offline, in-browser.
-  NEXT: wire `reconcileSigur` into a local↔server sync path (it finally has a local ledger).
+
+### WIRING-15 — safe sync engine (`sincronizeazaSigur`), RK-12 core — **done**
+- The offline-first story had every piece except a SAFE bidirectional sync. `@gr/sync`
+  `sincronizeazaSigur` adds a `reconcileSigur`-based cycle on the existing injected
+  `SursaSincronizare` abstraction: a row BLOCKED on the server (posted/stornat/anulat, per
+  `optiuni.blocat`) is NEVER overwritten by a stale local push — a local edit on it becomes a
+  reported CONFLICT and the client adopts the server version; unblocked rows follow LWW; pull
+  before push. +3 `@gr/sync` tests. This is the reusable ENGINE; wiring it into a
+  local-sqlite↔server sync (config + per-resource `SursaSincronizare` + a conflict-review UI)
+  is the follow-up. Note: ledgers stay command-generated (replay via the offline queue,
+  WIRING-9); the sync should carry DOCUMENTS + nomenclatoare, not LWW-sync ledger rows.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:

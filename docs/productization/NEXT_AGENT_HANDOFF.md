@@ -5,11 +5,10 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `ec5cac4` — WIRING-14 (5796af3) + docs (6783e5a) + two review fixes on the
-  local-sqlite persistence layer: `c9d24d4` (autosave must not `db.export()` mid-transaction —
-  guarded by a `txActiv` counter) and `ec5cac4` (tie the `execLocalCurent` singleton to the
-  MOUNTED provider so React StrictMode's double-init can't leave commands/reports on a
-  different in-browser DB than the provider). Both worktree-clean, tests 417/1 green.
+- HEAD SHA: `7c81878` (WIRING-15 code) before the doc commit (the doc commit is the tip).
+- Recent: WIRING-14 (local ledger reports) + two local-sqlite persistence review-fixes
+  (`c9d24d4` autosave-not-mid-transaction, `ec5cac4` exec-singleton StrictMode-safe) +
+  WIRING-15 (`7c81878`, safe sync engine `sincronizeazaSigur`). Tests 420/1 green.
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -181,9 +180,9 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **417 passed, 1 skipped** (gated real-PG).
+- `npx turbo run test --force` → **420 passed, 1 skipped** (gated real-PG).
   Per-package: core-domain 138, data 101, application 61, server 22, ui 26,
-  license 22, sync 17, fiscal-ro 14, auth 11, ai 5.
+  license 22, sync 20, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
   validating a document fired `POST /commands/post-document` (200) and the row
@@ -214,7 +213,9 @@ engine layers are built + tested, but not everywhere wired into the UI/transport
   first). The wired reads apply in NETWORK mode; the `local-sqlite` mode now FULLY mirrors it — a
   real persistent in-browser SQLite provider (WIRING-12) that POSTS via the real `@gr/application`
   engine (WIRING-13, ledgers written locally) and READS the local registers in reports (WIRING-14).
-  Same engine, offline, in-browser. Remaining: wire `reconcileSigur` into a local↔server sync path.
+  Same engine, offline, in-browser. The RK-12-safe sync ENGINE is now built too — `@gr/sync`
+  `sincronizeazaSigur` (WIRING-15). Remaining: WIRE that engine into a real local↔server sync
+  (config + per-resource `SursaSincronizare` + conflict-review UI).
 - **External gates**: official ANAF validators (SAF-T, e-Factura) + live SPV
   round-trip + independent pen-test + external accountant/legal review.
 - **Data**: legacy `firma_id IS NULL` rows globally visible until a backfill;
@@ -234,14 +235,17 @@ Remaining build directions the user selected:
   backup/restore are wired (WIRING-2..10); the browser SQLite executor is proven (WIRING-11
   spike); `local-sqlite` now FULLY mirrors NETWORK — persistent in-browser SQLite (WIRING-12),
   posts via the real `@gr/application` engine (WIRING-13), reports read the local registers
-  (WIRING-14). Next slices: (1) **`reconcileSigur` in a real sync path** — the conflict-aware
-  reconciliation (`@gr/sync` `reconcileSigur`, RK-12) finally has a local ledger + dataset to
-  reconcile; wire a local↔server sync (pull server rows, protect server-locked/posted docs from
-  LWW overwrite, surface conflicts) so a `local-sqlite` install can sync with a central server.
-  (2) the fiscal_events-native rewrite of D394/D390 (working drafts today); (3) a PostgreSQL-native
-  backup path (pg_dump wrapper). Verify with the Browser preview: `local-sqlite` mode needs only
-  `ui-dev` (no server) — set `localStorage['gr-deployment-mode']='local-sqlite'`; NETWORK slices
-  need `api-server` + `ui-dev` (LAN, login admin/admin123) per the run skill.
+  (WIRING-14); and the RK-12-safe sync ENGINE exists (`@gr/sync` `sincronizeazaSigur`, WIRING-15).
+  Next slices: (1) **WIRE the safe sync into the app** — a local-sqlite↔server sync built on
+  `sincronizeazaSigur`: config to point a local-sqlite install at a sync server; per-resource
+  `SursaSincronizare` (`citesteLocal/Remote` + `scrieLocal/Remote` over the local provider + the
+  API client) for DOCUMENTS + nomenclatoare with `blocat = d => ['validat','stornat','anulat'].includes(d.stare)`;
+  a conflict-review screen from the returned `conflicte`. Ledgers stay command-generated (replay via
+  the offline queue, WIRING-9), NOT LWW-synced. (2) the fiscal_events-native rewrite of D394/D390;
+  (3) a PostgreSQL-native backup path (pg_dump wrapper). Verify with the Browser preview:
+  `local-sqlite` mode needs only `ui-dev` (no server) — set
+  `localStorage['gr-deployment-mode']='local-sqlite'`; NETWORK/sync slices need `api-server` +
+  `ui-dev` (LAN, login admin/admin123) per the run skill.
   - NOTE 1: restarting/reloading `api-server` (tsx watch) resets the in-memory demo DB +
     SESSION_SECRET — clear `localStorage['gr-user']` + re-login after a server change.
   - NOTE 2 (env quirk seen this session): after MANY tsx-watch reloads a browser tab's UI

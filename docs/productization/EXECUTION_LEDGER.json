@@ -11,9 +11,9 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 417,
+      "total": 420,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..10) + WIRING-11 spike + WIRING-12/13/14 local-sqlite (persistent provider + local command engine + local ledger reports); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine; +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
         "data": 101,
@@ -21,7 +21,7 @@
         "server": 22,
         "license": 22,
         "ui": 26,
-        "sync": 17,
+        "sync": 20,
         "fiscal-ro": 14,
         "auth": 11,
         "ai": 5
@@ -1299,6 +1299,24 @@
         "The live report-generation click (e.g. SAF-T Genereaza) wasn't driven to completion (fiddly); the reports-read-registers behavior is proven by the node-WASM unit test running the exact production factory + command + reports clients."
       ],
       "externalValidation": "Local reports-read-registers proven by @gr/ui node-WASM unit test; live browser smoke (report pages render, no errors) in-session."
+    },
+    {
+      "id": "WIRING-15",
+      "phase": 15,
+      "title": "safe sync engine (sincronizeazaSigur) — RK-12 core for local<->server sync",
+      "status": "done",
+      "files": ["packages/sync/src/engine.ts"],
+      "migrations": [],
+      "tests": [
+        "packages/sync/src/engine.test.ts (+3: blocked-row conflict, pull-before-push, unblocked LWW)"
+      ],
+      "commitSha": "7c81878",
+      "acceptanceEvidence": "The offline-first story had every piece except a SAFE bidirectional sync. The existing sincronizeaza orchestrator is last-write-wins (unsafe for posted documents + ledgers). Adds sincronizeazaSigur on the same injected SursaSincronizare abstraction, reconciling via reconcileSigur (RK-12): a row BLOCKED on the server (posted/stornat/anulat, per optiuni.blocat) is NEVER overwritten by a stale local push -> a local edit on it becomes a CONFLICT (reported, not sent) and the client adopts the server version; unblocked rows follow LWW; pull is applied BEFORE push. Returns reconcile result + conflicte + finalizatLa. +3 @gr/sync tests. Suite 417->420 / 1 skipped; typecheck 11/11; biome clean.",
+      "risks": [
+        "Engine core only — NOT yet wired into the app. The full local-sqlite<->server sync needs: config to point a local-sqlite install at a sync server, per-resource SursaSincronizare (citesteLocal/Remote/scrieLocal/Remote over the local provider + the API client), a `blocat` predicate per resource (documents: stare in validat/stornat/anulat), and a conflict-review UI.",
+        "Ledgers (journal/stock/fiscal) are server-authoritative and command-generated; the sync should carry DOCUMENTS + nomenclatoare and let the engine regenerate ledgers via commands (offline queue, WIRING-9), not LWW-sync ledger rows — the wiring must choose which resources sync as data vs replay as commands."
+      ],
+      "externalValidation": "Reconcile safety + orchestration proven by @gr/sync unit tests (reconcileSigur policy tests + engine tests)."
     }
   ]
 }
