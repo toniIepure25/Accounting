@@ -1,3 +1,8 @@
+import {
+  type OptiuniReconciliereSigura,
+  type RezultatReconciliereSigura,
+  reconcileSigur,
+} from './policy.js';
 import { type RezultatReconciliere, type Versionat, reconcile } from './sync.js';
 
 /**
@@ -37,6 +42,37 @@ export async function sincronizeaza<T extends Versionat>(
 
   if (rezultat.dePush.length > 0) await sursa.scrieRemote(rezultat.dePush);
   if (rezultat.dePull.length > 0) await sursa.scrieLocal(rezultat.dePull);
+
+  return { ...rezultat, finalizatLa: new Date().toISOString() };
+}
+
+export interface RezultatSincronizareSigura<T> extends RezultatReconciliereSigura<T> {
+  finalizatLa: string;
+}
+
+/**
+ * Ciclu de sincronizare SIGUR pentru date financiare (RK-12): la fel ca
+ * `sincronizeaza`, dar reconcilierea NU e last-write-wins — un rand BLOCAT pe
+ * server (document postat/stornat/anulat + registrele lui) nu e niciodata
+ * suprascris de un push local invechit. O editare locala pe un rand blocat pe
+ * server devine CONFLICT (raportat, nu trimis); clientul adopta versiunea
+ * serverului. Restul (nomenclatoare/ciorne ne-blocate) urmeaza LWW normal.
+ *
+ * `optiuni.blocat(r)` decide daca un rand REMOTE e imutabil (ex.
+ * `d => d.stare === 'validat' || d.stare === 'stornat' || d.stare === 'anulat'`).
+ */
+export async function sincronizeazaSigur<T extends Versionat>(
+  sursa: SursaSincronizare<T>,
+  optiuni: OptiuniReconciliereSigura<T>,
+): Promise<RezultatSincronizareSigura<T>> {
+  const [local, remote] = await Promise.all([sursa.citesteLocal(), sursa.citesteRemote()]);
+  const rezultat = reconcileSigur(local, remote, optiuni);
+
+  // Ordinea: intai ADOPTA versiunile serverului (dePull, incl. randurile blocate
+  // aflate in conflict), apoi trimite scrierile locale sigure (dePush). Astfel un
+  // rand blocat pe server nu poate fi impins de un local invechit.
+  if (rezultat.dePull.length > 0) await sursa.scrieLocal(rezultat.dePull);
+  if (rezultat.dePush.length > 0) await sursa.scrieRemote(rezultat.dePush);
 
   return { ...rezultat, finalizatLa: new Date().toISOString() };
 }
