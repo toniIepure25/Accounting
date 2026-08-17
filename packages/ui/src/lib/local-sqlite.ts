@@ -94,8 +94,18 @@ export function stocatorIndexedDb(nume = 'gr-local-sqlite'): StocatorBaza {
   };
 }
 
-/** Inveleste un executor ca ORICE scriere sa programeze o salvare (debounced). */
-function cuAutosalvare(exec: SqlExecutor, programeazaSalvare: () => void): SqlExecutor {
+/**
+ * Inveleste un executor ca ORICE scriere sa programeze o salvare (debounced).
+ * `txActiv` numara tranzactiile in curs: `db.export()` NU trebuie sa serializeze
+ * o baza cu o tranzactie deschisa (ar persista stare NECOMITATA, poate stornata),
+ * iar salvarea (setTimeout) se poate declansa intre doua instructiuni `await` ale
+ * unei tranzactii — de aceea salvarea se amana cat timp `txActiv.n > 0`.
+ */
+function cuAutosalvare(
+  exec: SqlExecutor,
+  programeazaSalvare: () => void,
+  txActiv: { n: number },
+): SqlExecutor {
   return {
     execute: async (sql: string, params?: readonly unknown[]): Promise<SqlResult> => {
       const r = await exec.execute(sql, params);
@@ -104,9 +114,13 @@ function cuAutosalvare(exec: SqlExecutor, programeazaSalvare: () => void): SqlEx
     },
     select: (sql, params) => exec.select(sql, params),
     transaction: async <T>(opt: TransactionOptions, work: (tx: SqlExecutor) => Promise<T>) => {
-      const r = await exec.transaction(opt, work);
-      programeazaSalvare(); // dupa COMMIT
-      return r;
+      txActiv.n++;
+      try {
+        return await exec.transaction(opt, work);
+      } finally {
+        txActiv.n--;
+        programeazaSalvare(); // dupa COMMIT/ROLLBACK (cand txActiv.n a revenit la 0)
+      }
     },
   };
 }
@@ -156,11 +170,17 @@ export async function creeazaProviderLocalSqlite(
   const proaspata = !existent;
   const aplicate = await migrate(execBrut, MIGRATII_INCORPORATE);
 
-  // Salvare debounced a intregii baze.
+  // Salvare debounced a intregii baze. `txActiv` protejeaza `db.export()` de a
+  // serializa o tranzactie deschisa (vezi cuAutosalvare).
+  const txActiv = { n: 0 };
   let planificat: ReturnType<typeof setTimeout> | null = null;
   let inSalvare = false;
   const salveaza = async () => {
     if (inSalvare) return;
+    if (txActiv.n > 0) {
+      programeazaSalvare(); // amana: nu exporta cat timp e o tranzactie in curs
+      return;
+    }
     inSalvare = true;
     try {
       await stocator.salveaza(db.export());
@@ -183,7 +203,7 @@ export async function creeazaProviderLocalSqlite(
     await salveaza(); // persista schema nou-migrata
   }
 
-  const execFinal = cuAutosalvare(execBrut, programeazaSalvare);
+  const execFinal = cuAutosalvare(execBrut, programeazaSalvare, txActiv);
   // Expus pentru useComenzi/useRapoarte (motor + rapoarte pe ACELASI executor).
   execLocalCurent = execFinal;
   return createSqlProvider(execFinal);
