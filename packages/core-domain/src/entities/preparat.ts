@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /** Preparat de bucatarie (produs compus dintr-o reteta). */
 export const PreparatSchema = z.object({
@@ -11,6 +12,7 @@ export const PreparatSchema = z.object({
   /** Cota TVA — setata explicit; fara default tacit (fost 9%). Vezi motorul temporal de TVA. */
   cotaTvaProcent: z.number().int().min(0).max(100),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 export type Preparat = z.infer<typeof PreparatSchema>;
 
@@ -21,5 +23,6 @@ export const RetetaLinieSchema = z.object({
   produsId: z.string().uuid(),
   cantitate: z.number().min(0).default(0),
   unitateMasura: z.string().default('kg'),
+  ...campuriSync,
 });
 export type RetetaLinie = z.infer<typeof RetetaLinieSchema>;

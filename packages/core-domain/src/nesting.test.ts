@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConfiguratieMobila, OptiuneConfigurator } from './entities/mobila.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 import {
   calculCantMl,
   listaDebitare,
@@ -63,7 +64,7 @@ describe('cant + feronerie + reguli', () => {
   });
 
   it('agregă BOM feronerie din accesoriile alese', () => {
-    const optiuni: OptiuneConfigurator[] = [
+    const optiuni: FaraCampuriSync<OptiuneConfigurator>[] = [
       {
         id: 'acc',
         tip: 'accesoriu',
@@ -91,7 +92,7 @@ describe('cant + feronerie + reguli', () => {
   });
 
   it('necesarConsumStoc: material+finisaj consuma suprafata, accesoriile consuma bucati, optiunile fara produsId nu genereaza consum', () => {
-    const optiuni: OptiuneConfigurator[] = [
+    const optiuni: FaraCampuriSync<OptiuneConfigurator>[] = [
       {
         id: 'mat',
         tip: 'material',
@@ -140,7 +141,7 @@ describe('cant + feronerie + reguli', () => {
   });
 
   it('necesarConsumStoc agrega cantitatile cand material si finisaj sunt legate de acelasi produs', () => {
-    const optiuni: OptiuneConfigurator[] = [
+    const optiuni: FaraCampuriSync<OptiuneConfigurator>[] = [
       {
         id: 'mat',
         tip: 'material',

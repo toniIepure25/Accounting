@@ -9,6 +9,7 @@ import {
 import type { OperatiuneCasa } from './entities/casa.js';
 import type { Document, DocumentLinie } from './entities/document.js';
 import type { ConfiguratieMobila, OptiuneConfigurator } from './entities/mobila.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 import { calculPretConfiguratie, listaDebitare, restDePlata } from './mobila.js';
 import { balantaParteneri, jurnal, registruCasa, registruInventar } from './reports.js';
 import { type MiscareStoc, ruleazaStoc, soldProdus } from './stock.js';
@@ -175,7 +176,7 @@ describe('reports', () => {
 });
 
 describe('mobila configurator', () => {
-  const optiuni: OptiuneConfigurator[] = [
+  const optiuni: FaraCampuriSync<OptiuneConfigurator>[] = [
     {
       id: 'mat',
       tip: 'material',

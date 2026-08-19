@@ -5,6 +5,7 @@ import {
   type OptiuneConfigurator,
   type StareProductie,
 } from './entities/mobila.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 import type { Bani } from './money.js';
 import type { Piesa, RezultatNesting } from './nesting.js';
 
@@ -16,7 +17,7 @@ import type { Piesa, RezultatNesting } from './nesting.js';
 export function calculPretConfiguratie(
   pretBazaBani: number,
   cfg: ConfiguratieMobila,
-  optiuni: readonly OptiuneConfigurator[],
+  optiuni: readonly FaraCampuriSync<OptiuneConfigurator>[],
 ): Bani {
   const byId = new Map(optiuni.map((o) => [o.id, o]));
   let total = pretBazaBani;
@@ -99,7 +100,7 @@ export function calculCantMl(panouri: readonly PanouDebitare[], laturi: 1 | 2 | 
 /** BOM feronerie: agregă accesoriile alese (id-uri repetate = cantitate). */
 export function necesarFeronerie(
   cfg: ConfiguratieMobila,
-  optiuni: readonly OptiuneConfigurator[],
+  optiuni: readonly FaraCampuriSync<OptiuneConfigurator>[],
 ): { denumire: string; bucati: number }[] {
   const byId = new Map(optiuni.map((o) => [o.id, o]));
   const cnt = new Map<string, number>();
@@ -124,7 +125,7 @@ export interface NecesarConsum {
  */
 export function necesarConsumStoc(
   cfg: ConfiguratieMobila,
-  optiuni: readonly OptiuneConfigurator[],
+  optiuni: readonly FaraCampuriSync<OptiuneConfigurator>[],
   suprafataMp: number,
 ): NecesarConsum[] {
   const byId = new Map(optiuni.map((o) => [o.id, o]));

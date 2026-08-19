@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /**
  * Optiune de configurator pentru modulul Mobila: materiale (PAL/MDF), finisaje,
@@ -23,6 +24,7 @@ export const OptiuneConfiguratorSchema = z.object({
    */
   produsId: z.string().uuid().nullable().default(null),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 export type OptiuneConfigurator = z.infer<typeof OptiuneConfiguratorSchema>;
 
@@ -85,6 +87,7 @@ export const ProfilConfiguratorSchema = z.object({
   inaltimeMaxMm: z.number().int().min(0).nullable().default(null),
   adancimeMinMm: z.number().int().min(0).nullable().default(null),
   adancimeMaxMm: z.number().int().min(0).nullable().default(null),
+  ...campuriSync,
 });
 export type ProfilConfigurator = z.infer<typeof ProfilConfiguratorSchema>;
 
@@ -93,5 +96,6 @@ export const CombinatieInterzisaSchema = z.object({
   id: z.string().uuid(),
   materialId: z.string().uuid(),
   finisajId: z.string().uuid(),
+  ...campuriSync,
 });
 export type CombinatieInterzisa = z.infer<typeof CombinatieInterzisaSchema>;
