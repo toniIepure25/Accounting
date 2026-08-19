@@ -5,15 +5,13 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `c2d6f52` (WIRING-19 code) before the doc commit (the doc commit is the tip).
-- Recent: WIRING-15 (safe sync engine) + WIRING-16..19 (entity versioning). Tests 425/1 green.
+- HEAD SHA: `7cf333d` (WIRING-20 code) before the doc commit (the doc commit is the tip).
+- Recent: WIRING-15 (safe sync engine) + WIRING-16..20 (entity versioning). Tests 425/1 green.
 - **User decision (this session):** on discovering entities weren't versioned at the repo boundary
-  (blocking real sync), the user chose to **add entity versioning**. Now versioned (**14 entities**):
-  parteneri, produse, gestiuni, puncte_lucru, firme, grupe_produse, plan_conturi, personal,
-  liste_preturi, tip_consum, obiecte_inventar, operatiuni_casa, operatiuni_bancare, mijloace_fixe
-  (migrations `0022_sync_columns` + `0023_sync_columns_operational`). WIRING-19 also added
-  `FaraCampuriSync<T>` so pure domain functions stay free of persistence metadata. Remaining:
-  mobila/restaurant config + documente.
+  (blocking real sync), the user chose to **add entity versioning**. Now versioned (**19 entities**):
+  all sync-relevant nomenclatoare + operational + config tables (migrations `0022`/`0023`/`0024`).
+  `FaraCampuriSync<T>` keeps pure domain functions free of persistence metadata. **Only DOCUMENTS
+  remain** (documente/documente_linii — deliberate step) + tombstones on `remove()`, then wire sync.
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -242,14 +240,9 @@ Remaining build directions the user selected:
   posts via the real `@gr/application` engine (WIRING-13), reports read the local registers
   (WIRING-14); the RK-12-safe sync ENGINE exists (`sincronizeazaSigur`, WIRING-15); and the
   entity-versioning FOUNDATION is in place (WIRING-16 repo stamping) and 14 entities are versioned
-  (WIRING-17/18/19 + migrations `0022`/`0023`; `FaraCampuriSync<T>` keeps pure domain functions free
-  of persistence metadata — reuse it for domain-rich entities). Next slices: (1) **finish entity
-  versioning** — (a) a follow-up migration adding the 3 sync columns to the still-unversioned
-  mobila/restaurant config tables (`optiuni_configurator`, `profil_configurator`,
-  `combinatii_interzise`, `preparate`, `retete_linii`); regenerate `MIGRATII_INCORPORATE`
-  (`node scripts/genereaza-migratii-incorporate.mjs`); then spread `campuriSync` into those schemas
-  (+ omit from Inputs) and apply `FaraCampuriSync` to their domain functions (mobila.ts). (b)
-  `documente`/`documente_linii` as their OWN careful step: `documente`
+  (WIRING-17..20 + migrations `0022`/`0023`/`0024`; `FaraCampuriSync<T>` keeps pure domain functions
+  free of persistence metadata — reuse it for domain-rich entities). Next slices: (1) **finish entity
+  versioning** — `documente`/`documente_linii` as their OWN careful step: `documente`
   already has its own `version` (optimistic locking, migration 0014) and the command layer bumps
   it — decide whether the sync `version` reuses that column and ensure the repo stamp doesn't fight
   the optimistic-lock bump. (c) soft-delete/tombstones on `remove()` (set `deletedAt`, bump version,

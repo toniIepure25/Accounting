@@ -380,8 +380,14 @@ specs where applicable. No claim without evidence.
 - Migration `0023_sync_columns_operational` + `campuriSync` on operatiuni_casa/bancare + mijloace_fixe.
   These feed pure DOMAIN functions, so introduced `FaraCampuriSync<T>` (core-domain): pure functions
   declare params without persistence metadata — a full entity stays assignable and test fixtures need
-  no sync fields, keeping the domain layer clean. **14 entities now versioned.** NEXT: mobila/restaurant
-  config tables (same pattern), then `documente` (careful), then tombstones, then wire the sync.
+  no sync fields, keeping the domain layer clean. **14 entities now versioned.**
+
+### WIRING-20 — version mobila/restaurant config entities (migration 0024) — **done**
+- Migration `0024_sync_columns_config` + `campuriSync` on optiuni/profil/combinatii_configurator +
+  preparate/retete_linii; `FaraCampuriSync<OptiuneConfigurator>` on the `mobila.ts` functions.
+  **19 entities now versioned** — only `documente`/`documente_linii` remain (deliberate step, given
+  documente's existing optimistic-lock `version`). NEXT: documents, then tombstones on `remove()`,
+  then wire the local↔server sync.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
