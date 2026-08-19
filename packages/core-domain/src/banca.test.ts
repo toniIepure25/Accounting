@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseExtrasCsv, reconciliazaAutomat } from './banca.js';
 import type { OperatiuneBancara } from './entities/banca.js';
 import type { OperatiuneCasa } from './entities/casa.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 
 describe('parseExtrasCsv', () => {
   it('parseaza randurile, ignorand antetul', () => {
@@ -26,7 +27,7 @@ describe('parseExtrasCsv', () => {
 });
 
 describe('reconciliazaAutomat', () => {
-  const bancare: OperatiuneBancara[] = [
+  const bancare: FaraCampuriSync<OperatiuneBancara>[] = [
     {
       id: 'b1',
       firmaId: null,
@@ -58,7 +59,7 @@ describe('reconciliazaAutomat', () => {
       operatiuneCasaId: null,
     },
   ];
-  const casa: OperatiuneCasa[] = [
+  const casa: FaraCampuriSync<OperatiuneCasa>[] = [
     {
       id: 'c1',
       firmaId: null,
@@ -96,7 +97,7 @@ describe('reconciliazaAutomat', () => {
   });
 
   it('nu re-foloseste o operatiune de casa deja potrivita cu alta bancara', () => {
-    const bancareDuplicat: OperatiuneBancara[] = [
+    const bancareDuplicat: FaraCampuriSync<OperatiuneBancara>[] = [
       {
         id: 'x1',
         firmaId: null,
@@ -118,7 +119,7 @@ describe('reconciliazaAutomat', () => {
         operatiuneCasaId: null,
       },
     ];
-    const casaUnica: OperatiuneCasa[] = [
+    const casaUnica: FaraCampuriSync<OperatiuneCasa>[] = [
       {
         id: 'c1',
         firmaId: null,
@@ -136,7 +137,7 @@ describe('reconciliazaAutomat', () => {
   });
 
   it('respecta flag-ul reconciliata (nu re-proceseaza ce e deja potrivit)', () => {
-    const dejaReconciliat: OperatiuneBancara[] = [
+    const dejaReconciliat: FaraCampuriSync<OperatiuneBancara>[] = [
       {
         id: 'r1',
         firmaId: null,

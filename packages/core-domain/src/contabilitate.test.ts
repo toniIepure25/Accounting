@@ -8,6 +8,7 @@ import {
 import type { OperatiuneCasa } from './entities/casa.js';
 import type { Document } from './entities/document.js';
 import type { MijlocFix } from './entities/mijloc-fix.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 
 const docs: Document[] = [
   {
@@ -39,7 +40,7 @@ const docs: Document[] = [
     totalBrutBani: 5000,
   } as Document,
 ];
-const casa: OperatiuneCasa[] = [
+const casa: FaraCampuriSync<OperatiuneCasa>[] = [
   {
     id: 'o1',
     tip: 'incasare',
@@ -179,7 +180,7 @@ describe('partida dubla', () => {
   });
 
   it('genereazaNoteAmortizare: 681=D / 281=C pentru mijloace fixe active', () => {
-    const mf: MijlocFix[] = [
+    const mf: FaraCampuriSync<MijlocFix>[] = [
       {
         id: 'mf1',
         firmaId: null,

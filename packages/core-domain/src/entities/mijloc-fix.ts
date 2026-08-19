@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /**
  * Mijloc fix (activ imobilizat corporal): utilaje, mobilier, echipamente,
@@ -33,8 +34,14 @@ export const MijlocFixSchema = z.object({
   activ: z.boolean().default(true),
   casat: z.boolean().default(false),
   dataCasare: z.string().nullable().default(null),
+  ...campuriSync,
 });
 export type MijlocFix = z.infer<typeof MijlocFixSchema>;
 
-export const MijlocFixInputSchema = MijlocFixSchema.omit({ id: true });
+export const MijlocFixInputSchema = MijlocFixSchema.omit({
+  id: true,
+  version: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type MijlocFixInput = z.infer<typeof MijlocFixInputSchema>;

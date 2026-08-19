@@ -1,4 +1,8 @@
 import type { MijlocFix } from './entities/mijloc-fix.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
+
+/** Mijloc fix fara metadatele de persistenta — logica de amortizare nu le foloseste. */
+type MijlocFixDomeniu = FaraCampuriSync<MijlocFix>;
 
 /**
  * Amortizare mijloace fixe. Doua metode uzuale in contabilitatea romaneasca:
@@ -13,7 +17,7 @@ import type { MijlocFix } from './entities/mijloc-fix.js';
  */
 
 /** Cota de amortizare pentru O LUNA, data valoarea deja amortizata cumulat. */
-export function calculAmortizareLunara(mf: MijlocFix): number {
+export function calculAmortizareLunara(mf: MijlocFixDomeniu): number {
   const ramasa = Math.max(0, mf.valoareIntrareBani - mf.amortizareCumulataBani);
   if (ramasa <= 0 || mf.casat) return 0;
 
@@ -47,9 +51,9 @@ export interface RandPlanAmortizare {
 }
 
 /** Planul complet de amortizare (luna cu luna) pana la epuizarea valorii. */
-export function planAmortizare(mf: MijlocFix): RandPlanAmortizare[] {
+export function planAmortizare(mf: MijlocFixDomeniu): RandPlanAmortizare[] {
   const randuri: RandPlanAmortizare[] = [];
-  let curent: MijlocFix = { ...mf, amortizareCumulataBani: mf.amortizareCumulataBani };
+  let curent: MijlocFixDomeniu = { ...mf, amortizareCumulataBani: mf.amortizareCumulataBani };
   let luna = 0;
   while (
     curent.amortizareCumulataBani < curent.valoareIntrareBani &&

@@ -6,6 +6,7 @@
 import type { OperatiuneCasa } from './entities/casa.js';
 import type { Document } from './entities/document.js';
 import type { MijlocFix } from './entities/mijloc-fix.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 import { calculAmortizareLunara } from './mijloace-fixe.js';
 
 export interface Postare {
@@ -78,7 +79,7 @@ const p = (cont: string, debitBani: number, creditBani: number): Postare => ({
 /** Genereaza notele contabile pentru documentele validate + operatiunile de casa. */
 export function genereazaNoteContabile(
   documente: readonly Document[],
-  operatiuniCasa: readonly OperatiuneCasa[],
+  operatiuniCasa: readonly FaraCampuriSync<OperatiuneCasa>[],
   optiuni: OptiuniMonografie = {},
 ): NotaContabila[] {
   const contStoc = optiuni.contStoc ?? (() => CONT.MARFURI);
@@ -183,7 +184,7 @@ export function genereazaNoteContabile(
  * de doua ori accidental aceeasi luna.
  */
 export function genereazaNoteAmortizare(
-  mijloaceFixe: readonly MijlocFix[],
+  mijloaceFixe: readonly FaraCampuriSync<MijlocFix>[],
   data: string,
 ): NotaContabila[] {
   const note: NotaContabila[] = [];

@@ -1,5 +1,6 @@
 import type { OperatiuneBancara } from './entities/banca.js';
 import type { OperatiuneCasa } from './entities/casa.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 
 /**
  * Import extras bancar (CSV) + reconciliere cu operatiunile de casa.
@@ -49,8 +50,8 @@ const zileIntre = (a: string, b: string): number =>
  * apelantului.
  */
 export function reconciliazaAutomat(
-  bancare: readonly OperatiuneBancara[],
-  casa: readonly OperatiuneCasa[],
+  bancare: readonly FaraCampuriSync<OperatiuneBancara>[],
+  casa: readonly FaraCampuriSync<OperatiuneCasa>[],
   toleranteZile = 3,
 ): PotrivireBancara[] {
   const casaDisponibila = new Set(casa.map((c) => c.id));

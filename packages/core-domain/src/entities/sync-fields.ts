@@ -21,3 +21,11 @@ export const campuriSync = {
 
 /** Cheile campurilor de sincronizare (pentru introspectie in repository). */
 export const CHEI_SYNC = ['version', 'updatedAt', 'deletedAt'] as const;
+
+/**
+ * `T` fara campurile de sincronizare. Functiile PURE de domeniu (care nu au nevoie
+ * de metadatele de persistenta) isi declara parametrii asa: o entitate completa (cu
+ * sync) ramane atribuibila (structural), iar fixture-urile de test nu trebuie sa
+ * declare campurile de sync. Persistenta ramane preocuparea repository-ului.
+ */
+export type FaraCampuriSync<T> = Omit<T, 'version' | 'updatedAt' | 'deletedAt'>;

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { MijlocFix } from './entities/mijloc-fix.js';
+import type { FaraCampuriSync } from './entities/sync-fields.js';
 import { calculAmortizareLunara, planAmortizare } from './mijloace-fixe.js';
 
-const baza: MijlocFix = {
+const baza: FaraCampuriSync<MijlocFix> = {
   id: 'mf1',
   firmaId: null,
   cod: 'MF-001',
@@ -45,7 +46,11 @@ describe('amortizare liniara', () => {
 });
 
 describe('amortizare degresiva', () => {
-  const degresiv: MijlocFix = { ...baza, metodaAmortizare: 'degresiva', coeficientDegresiv: 2 };
+  const degresiv: FaraCampuriSync<MijlocFix> = {
+    ...baza,
+    metodaAmortizare: 'degresiva',
+    coeficientDegresiv: 2,
+  };
 
   it('cota degresiva initiala e mai mare decat cota liniara (coeficient > 1)', () => {
     const cotaDegresiva = calculAmortizareLunara(degresiv);
