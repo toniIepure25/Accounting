@@ -389,6 +389,23 @@ specs where applicable. No claim without evidence.
   documente's existing optimistic-lock `version`). NEXT: documents, then tombstones on `remove()`,
   then wire the local↔server sync.
 
+### WIRING-21 — version documente/documente_linii (migration 0025) — **done**
+- Migration `0025_sync_columns_documente`: `documente` keeps its `version` (migration 0014, the
+  optimistic-lock counter — now doubles as the sync counter) and gains `updated_at`/`deleted_at`;
+  `documente_linii` gains all three. `DocumentSchema` +updatedAt/+deletedAt, `DocumentLinieSchema`
+  +`campuriSync`, so the generic repo's `areSync` is true for both. Bundle regenerated (25 migrations).
+- **The command engine stays authoritative over document sync metadata.** `version` was already
+  stamped on every state transition under optimistic locking; now `updatedAt` is stamped by the
+  commands too, on the full-object writes (create draft, update draft, post, storno) — the repo
+  preserves them verbatim. Partial-patch writes (approve/cancel/update-lines) auto-stamp via the repo.
+  The new storno document resets `version=1`/`updatedAt`/`deletedAt` (the spread from the original
+  would otherwise inherit them). Verified: concurrency (10) + post-document (13) tests stay green, so
+  optimistic locking is not regressed. **All 21 entities are now versioned at the repo boundary.**
+- NEXT: tombstones on `remove()` (soft-delete: set `deletedAt`, bump `version`, filter in reads), then
+  wire the safe local↔server sync (`sincronizeazaSigur`) over each resource — documents gated by
+  `blocat = d => ['validat','stornat','anulat'].includes(d.stare)`; ledgers stay command-generated,
+  NOT LWW-synced.
+
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
   `exportBazaSql`/`importBazaSql` (`packages/data/src/backup-sql.ts`) snapshot the

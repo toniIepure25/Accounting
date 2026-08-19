@@ -5,13 +5,20 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `7cf333d` (WIRING-20 code) before the doc commit (the doc commit is the tip).
-- Recent: WIRING-15 (safe sync engine) + WIRING-16..20 (entity versioning). Tests 425/1 green.
+- HEAD SHA: `4d615b7` (WIRING-21 code) before the doc commit (the doc commit is the tip).
+- Recent: WIRING-15 (safe sync engine) + WIRING-16..21 (entity versioning — now COMPLETE). All tests green.
 - **User decision (this session):** on discovering entities weren't versioned at the repo boundary
-  (blocking real sync), the user chose to **add entity versioning**. Now versioned (**19 entities**):
-  all sync-relevant nomenclatoare + operational + config tables (migrations `0022`/`0023`/`0024`).
-  `FaraCampuriSync<T>` keeps pure domain functions free of persistence metadata. **Only DOCUMENTS
-  remain** (documente/documente_linii — deliberate step) + tombstones on `remove()`, then wire sync.
+  (blocking real sync), the user chose to **add entity versioning**. **DONE — all 21 entities are now
+  versioned** (version/updatedAt/deletedAt at the repo boundary): nomenclatoare + operational + config
+  tables (migrations `0022`/`0023`/`0024`) plus `documente`/`documente_linii` (migration `0025`).
+  `FaraCampuriSync<T>` keeps pure domain functions free of persistence metadata. For DOCUMENTS the
+  COMMAND ENGINE stamps the sync metadata (it already owned `version` for optimistic locking; now also
+  `updatedAt`), so the repo preserves those verbatim — concurrency/post tests confirm no regression.
+- **EXACT NEXT PRIORITY:** (1) tombstones on `remove()` — soft-delete: set `deletedAt`, bump `version`,
+  filter `deletedAt` in reads (generic-sql-repo + reads); (2) then WIRE the safe sync
+  (`sincronizeazaSigur`, WIRING-15) per resource over local provider + API client — documents gated by
+  `blocat = d => ['validat','stornat','anulat'].includes(d.stare)`; ledgers stay command-generated, NOT
+  LWW-synced; conflict-review UI. See `packages/sync/src/engine.ts`, `packages/data/src/generic-sql-repo.ts`.
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -239,14 +246,14 @@ Remaining build directions the user selected:
   spike); `local-sqlite` now FULLY mirrors NETWORK — persistent in-browser SQLite (WIRING-12),
   posts via the real `@gr/application` engine (WIRING-13), reports read the local registers
   (WIRING-14); the RK-12-safe sync ENGINE exists (`sincronizeazaSigur`, WIRING-15); and the
-  entity-versioning FOUNDATION is in place (WIRING-16 repo stamping) and 14 entities are versioned
-  (WIRING-17..20 + migrations `0022`/`0023`/`0024`; `FaraCampuriSync<T>` keeps pure domain functions
-  free of persistence metadata — reuse it for domain-rich entities). Next slices: (1) **finish entity
-  versioning** — `documente`/`documente_linii` as their OWN careful step: `documente`
-  already has its own `version` (optimistic locking, migration 0014) and the command layer bumps
-  it — decide whether the sync `version` reuses that column and ensure the repo stamp doesn't fight
-  the optimistic-lock bump. (c) soft-delete/tombstones on `remove()` (set `deletedAt`, bump version,
-  filter `deletedAt` in reads) so deletions propagate.
+  entity-versioning FOUNDATION is in place (WIRING-16 repo stamping) and **ALL 21 entities are now
+  versioned** (WIRING-17..21 + migrations `0022`/`0023`/`0024`/`0025`; `FaraCampuriSync<T>` keeps pure
+  domain functions free of persistence metadata — reuse it for domain-rich entities). `documente`
+  reuses its optimistic-lock `version` (migration 0014) as the sync counter; the COMMAND ENGINE stamps
+  document `version`+`updatedAt` on full-object writes (repo preserves verbatim), so the repo stamp does
+  not fight the optimistic-lock bump — verified by the concurrency/post tests. Next slices: (1) **soft-
+  delete/tombstones on `remove()`** (set `deletedAt`, bump version, filter `deletedAt` in reads) so
+  deletions propagate over sync.
   (2) **WIRE the safe sync into the app** — a local-sqlite↔server sync built on
   `sincronizeazaSigur`: config to point a local-sqlite install at a sync server; per-resource
   `SursaSincronizare` (`citesteLocal/Remote` + `scrieLocal/Remote` over the local provider + the
