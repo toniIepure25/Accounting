@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /**
  * Model unic de document, coloana vertebrala a aplicatiei. Acopera prin campul
@@ -59,6 +60,7 @@ export const DocumentLinieSchema = z.object({
   netBani: z.number().int().default(0),
   tvaBani: z.number().int().default(0),
   brutBani: z.number().int().default(0),
+  ...campuriSync,
 });
 export type DocumentLinie = z.infer<typeof DocumentLinieSchema>;
 
@@ -103,6 +105,14 @@ export const DocumentSchema = z.object({
    * invechit este respinsa (conflict) in loc sa suprascrie orbeste.
    */
   version: z.number().int().min(1).default(1),
+  /**
+   * Metadate de sincronizare (WIRING-21). `version` de mai sus e refolosit si de
+   * sync; aici doar marca temporala + tombstone. Pe documente, aceste campuri sunt
+   * STAMPILATE DE MOTORUL de comenzi (lifecycle/post-document), nu de repo-ul generic
+   * — comenzile sunt autoritare peste tranzitiile de stare.
+   */
+  updatedAt: z.string().default(''),
+  deletedAt: z.string().nullable().default(null),
 });
 export type Document = z.infer<typeof DocumentSchema>;
 

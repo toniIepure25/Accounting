@@ -93,6 +93,9 @@ export async function postDocument(
         numar: alocat.numar,
         cod: alocat.cod,
         version: document.version + 1,
+        // Motorul e autoritar peste marca de sincronizare (obiectul e trecut INTREG,
+        // deci repo-ul l-ar pastra verbatim); postarea reimprospata `updatedAt`.
+        updatedAt: t,
       };
       await repos.documente.update(id, docPostat);
 

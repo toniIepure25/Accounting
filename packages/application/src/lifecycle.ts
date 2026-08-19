@@ -27,13 +27,17 @@ export async function createDraftDocument(
   deps: CommandDeps,
   payload: DocumentPayload,
 ): Promise<DocumentCuLinii> {
+  const t = acum(deps);
   return deps.exec.transaction({}, async (tx) => {
     const repos = withExecutor(tx);
     const draft: Document = { ...payload.document, stare: STARE_DOC.CIORNA };
     const recalc = recalculeazaAgregat(draft, payload.linii);
-    const creat = await repos.documente.create(recalc.document);
+    // Stampilam `updatedAt` in stratul de comenzi: obiectul-document e trecut
+    // INTREG catre repo (poarta deja `updatedAt`), deci repo-ul l-ar pastra verbatim
+    // — motorul e autoritar peste marca temporala, la fel ca peste `version`.
+    const creat = await repos.documente.create({ ...recalc.document, updatedAt: t });
     for (const l of recalc.linii) {
-      await repos.documenteLinii.create({ ...l, documentId: creat.id });
+      await repos.documenteLinii.create({ ...l, documentId: creat.id, updatedAt: t });
     }
     return incarcaDocumentCuLinii(repos, creat.id);
   });
@@ -50,6 +54,7 @@ export async function updateDraftDocument(
     expectedVersion?: number;
   },
 ): Promise<DocumentCuLinii> {
+  const t = acum(deps);
   return deps.exec.transaction({}, async (tx) => {
     const repos = withExecutor(tx);
     const current = await repos.documente.getById(id);
@@ -71,10 +76,14 @@ export async function updateDraftDocument(
     }
 
     const recalc = recalculeazaAgregat(doc, linii);
-    await repos.documente.update(id, { ...recalc.document, version: current.version + 1 });
+    await repos.documente.update(id, {
+      ...recalc.document,
+      version: current.version + 1,
+      updatedAt: t,
+    });
     for (const l of recalc.linii) {
       if (patch.linii) {
-        await repos.documenteLinii.create({ ...l, documentId: id });
+        await repos.documenteLinii.create({ ...l, documentId: id, updatedAt: t });
       } else {
         await repos.documenteLinii.update(l.id, {
           netBani: l.netBani,
@@ -175,6 +184,11 @@ export async function reverseDocument(
       totalNetBani: -document.totalNetBani,
       totalTvaBani: -document.totalTvaBani,
       totalBrutBani: -document.totalBrutBani,
+      // Document NOU: reseteaza metadatele de sincronizare (spread-ul de mai sus
+      // ar fi mostenit `version`/`updatedAt` de pe originalul stornat).
+      version: 1,
+      updatedAt: t,
+      deletedAt: null,
     };
     await repos.documente.create(stornoDoc);
 
@@ -188,6 +202,9 @@ export async function reverseDocument(
         netBani: -l.netBani,
         tvaBani: -l.tvaBani,
         brutBani: -l.brutBani,
+        version: 1,
+        updatedAt: t,
+        deletedAt: null,
       });
       await copiazaSnapshotLinie(tx, l.id, stornoLinieId);
     }

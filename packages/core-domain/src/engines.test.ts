@@ -29,6 +29,9 @@ function linie(over: Partial<DocumentLinie>): DocumentLinie {
     netBani: 0,
     tvaBani: 0,
     brutBani: 0,
+    version: 1,
+    updatedAt: '',
+    deletedAt: null,
     ...over,
   });
 }
