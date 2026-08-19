@@ -13,7 +13,7 @@
     "tests": {
       "total": 425,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine + WIRING-16/17/18 entity versioning (11 entities: parteneri/produse/gestiuni/puncte_lucru/firme/grupe_produse/plan_conturi/personal/liste_preturi/tip_consum/obiecte_inventar); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine + WIRING-16..19 entity versioning (14 entities; FaraCampuriSync keeps domain funcs clean); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
         "data": 106,
@@ -1389,6 +1389,33 @@
         "0022 uses plain ADD COLUMN with NOT NULL DEFAULT — fine on SQLite + PG for existing rows; if a table were large on PG the rewrite is O(rows) but these are small master-data tables."
       ],
       "externalValidation": "Migration apply + column presence verified on fresh SQLite; drift test keeps the browser bundle in sync."
+    },
+    {
+      "id": "WIRING-19",
+      "phase": 15,
+      "title": "version operational entities (casa/banca/mijloace_fixe) + FaraCampuriSync pattern",
+      "status": "done",
+      "files": [
+        "db/migrations/0023_sync_columns_operational.sql",
+        "packages/core-domain/src/entities/sync-fields.ts",
+        "packages/core-domain/src/entities/casa.ts",
+        "packages/core-domain/src/entities/banca.ts",
+        "packages/core-domain/src/entities/mijloc-fix.ts",
+        "packages/core-domain/src/banca.ts",
+        "packages/core-domain/src/mijloace-fixe.ts",
+        "packages/core-domain/src/contabilitate.ts"
+      ],
+      "migrations": ["0023_sync_columns_operational"],
+      "tests": [
+        "existing @gr/core-domain banca/mijloace-fixe/contabilitate tests (fixtures retyped FaraCampuriSync) + generic-sql-repo/migratii-incorporate"
+      ],
+      "commitSha": "c2d6f52",
+      "acceptanceEvidence": "Fourth versioning increment: firma-scoped OPERATIONAL tables. Unlike pure nomenclatoare, these feed pure DOMAIN functions (reconciliazaAutomat, amortization, genereazaNoteContabile/Amortizare) — so introduced core-domain FaraCampuriSync<T>: pure functions declare params as FaraCampuriSync<Entity> (persistence metadata isn't domain logic); a full entity stays structurally assignable and test fixtures need no sync fields, keeping the domain layer unpolluted. 0023_sync_columns_operational.sql ADDs version/updated_at/deleted_at on operatiuni_casa/bancare + mijloace_fixe (SQLite+PG); bundle regenerated; campuriSync in those schemas. 14 entities now versioned. Suite 425/1; typecheck 11/11; biome clean; build:web OK.",
+      "risks": [
+        "Still unversioned (sync-relevant): mobila/restaurant config (optiuni/profil/combinatii_configurator, preparate, retete_linii) — follow-up migration + FaraCampuriSync on their domain functions. And documente/documente_linii (documente reuses its optimistic-lock `version` — deliberate step).",
+        "remove() still hard-deletes (no tombstones)."
+      ],
+      "externalValidation": "Domain tests unchanged in behavior (fixtures retyped); migration verified via bundle regen + apply."
     }
   ]
 }

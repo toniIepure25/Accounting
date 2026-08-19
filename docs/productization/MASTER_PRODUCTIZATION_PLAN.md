@@ -376,6 +376,13 @@ specs where applicable. No claim without evidence.
   operational (operatiuni_casa/bancare, mijloace_fixe) + mobila-config tables, then `documente`
   (reuse its optimistic-lock `version`), then tombstones on `remove()`, then wire the sync.
 
+### WIRING-19 — version operational entities + `FaraCampuriSync` pattern — **done**
+- Migration `0023_sync_columns_operational` + `campuriSync` on operatiuni_casa/bancare + mijloace_fixe.
+  These feed pure DOMAIN functions, so introduced `FaraCampuriSync<T>` (core-domain): pure functions
+  declare params without persistence metadata — a full entity stays assignable and test fixtures need
+  no sync fields, keeping the domain layer clean. **14 entities now versioned.** NEXT: mobila/restaurant
+  config tables (same pattern), then `documente` (careful), then tombstones, then wire the sync.
+
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
   `exportBazaSql`/`importBazaSql` (`packages/data/src/backup-sql.ts`) snapshot the
