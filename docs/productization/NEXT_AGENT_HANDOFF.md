@@ -5,12 +5,12 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `d656a10` (WIRING-16 code) before the doc commit (the doc commit is the tip).
-- Recent: WIRING-15 (safe sync engine) + WIRING-16 (`d656a10`, entity versioning foundation —
-  the repo now stamps `version`/`updatedAt`, schema-driven; Partener migrated). Tests 424/1 green.
+- HEAD SHA: `9ecce9d` (WIRING-17 code) before the doc commit (the doc commit is the tip).
+- Recent: WIRING-15 (safe sync engine) + WIRING-16 (entity versioning foundation, Partener) +
+  WIRING-17 (`9ecce9d`, versioned produse/gestiuni/puncte_lucru). Tests 425/1 green.
 - **User decision (this session):** on discovering entities weren't versioned at the repo
-  boundary (blocking real sync), the user chose to **add entity versioning** — WIRING-16 is
-  the first increment; remaining entities are the follow-on.
+  boundary (blocking real sync), the user chose to **add entity versioning**. Now versioned:
+  **parteneri, produse, gestiuni, puncte_lucru**. Remaining tables need a migration (see below).
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -182,8 +182,8 @@ planning or repeat earlier phases.
 
 ## Current test/build state (evidence, this session)
 - `npx turbo run typecheck --force` → 11/11.
-- `npx turbo run test --force` → **424 passed, 1 skipped** (gated real-PG).
-  Per-package: core-domain 138, data 105, application 61, server 22, ui 26,
+- `npx turbo run test --force` → **425 passed, 1 skipped** (gated real-PG).
+  Per-package: core-domain 138, data 106, application 61, server 22, ui 26,
   license 22, sync 20, fiscal-ro 14, auth 11, ai 5.
 - DR drill (`npx tsx server/scripts/dr-drill.ts`) → OK, exit 0 (also a CI job).
 - WIRING-2 verified LIVE in the Browser preview (server demo SQLite + UI LAN mode):
@@ -238,12 +238,18 @@ Remaining build directions the user selected:
   spike); `local-sqlite` now FULLY mirrors NETWORK — persistent in-browser SQLite (WIRING-12),
   posts via the real `@gr/application` engine (WIRING-13), reports read the local registers
   (WIRING-14); the RK-12-safe sync ENGINE exists (`sincronizeazaSigur`, WIRING-15); and the
-  entity-versioning FOUNDATION is started (WIRING-16 — the repo stamps `version`/`updatedAt`
-  schema-driven; Partener migrated). Next slices: (1) **finish entity versioning** — spread
-  `campuriSync` (`@gr/core-domain`) into the remaining sync-relevant schemas (produs, document,
-  gestiune, nomenclatoare, firma, casa/banca, mijloc-fix) and omit those fields from each Input
-  schema; the repo stamps them automatically. Then add soft-delete/tombstones to `remove()`
-  (set `deletedAt`, bump version, and filter `deletedAt` in reads) so deletions propagate.
+  entity-versioning FOUNDATION is in place (WIRING-16 repo stamping + WIRING-17 versioned
+  parteneri/produse/gestiuni/puncte_lucru — the tables that already had the sync columns from
+  migration 0001). Next slices: (1) **finish entity versioning** — the remaining sync-relevant
+  tables (firme, documente, operatiuni_casa/bancare, mijloace_fixe, personal, liste_preturi,
+  tip_consum, obiecte_inventar, grupe_produse, plan_conturi) LACK version/updated_at/deleted_at
+  columns; add a migration `0022_sync_columns.sql` (`ALTER TABLE ... ADD COLUMN` the three, on
+  SQLite + PG), regenerate `MIGRATII_INCORPORATE` (`node scripts/genereaza-migratii-incorporate.mjs`),
+  then spread `campuriSync` into those schemas + omit from Inputs. CAUTION: `documente` already
+  has its own `version` (optimistic locking, migration 0014) — decide whether the sync `version`
+  reuses it (likely, but the command layer bumps it; the repo stamping must not fight the
+  optimistic-lock bump). Then add soft-delete/tombstones to `remove()` (set `deletedAt`, bump
+  version, filter `deletedAt` in reads) so deletions propagate.
   (2) **WIRE the safe sync into the app** — a local-sqlite↔server sync built on
   `sincronizeazaSigur`: config to point a local-sqlite install at a sync server; per-resource
   `SursaSincronizare` (`citesteLocal/Remote` + `scrieLocal/Remote` over the local provider + the

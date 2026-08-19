@@ -11,12 +11,12 @@
   "baselineEvidence": {
     "typecheck": "11/11 packages OK",
     "tests": {
-      "total": 424,
+      "total": 425,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine + WIRING-16 entity versioning foundation; +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15/16/17 (safe sync engine + entity versioning: parteneri/produse/gestiuni/puncte_lucru); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
-        "data": 105,
+        "data": 106,
         "application": 61,
         "server": 22,
         "license": 22,
@@ -1341,6 +1341,29 @@
         "The in-memory (demo) provider does not stamp/fill sync fields (demo doesn't sync); only the SQL repo stamps. Fine — demo mode isn't a sync participant."
       ],
       "externalValidation": "Stamping + verbatim-preserve proven by @gr/data unit tests."
+    },
+    {
+      "id": "WIRING-17",
+      "phase": 15,
+      "title": "extend versioning to sync-ready nomenclatoare (produse, gestiuni, puncte_lucru)",
+      "status": "done",
+      "files": [
+        "packages/core-domain/src/entities/produs.ts",
+        "packages/core-domain/src/entities/gestiune.ts",
+        "packages/core-domain/src/entities/structura.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/data/src/generic-sql-repo.test.ts (real produse table + ProdusSchema versioned)"
+      ],
+      "commitSha": "9ecce9d",
+      "acceptanceEvidence": "Second increment of entity versioning. produse/gestiuni/puncte_lucru tables already carry the sync columns (migration 0001), so adding campuriSync to their schemas is safe with NO migration — the repo stamps version/updatedAt for them too; sync fields omitted from each Input schema. Now versioned: parteneri, produse, gestiuni, puncte_lucru. +1 @gr/data test (REAL produse table: create->version 1 + updatedAt, update->version 2). Suite 424->425/1; typecheck 11/11; biome clean; build:web OK.",
+      "risks": [
+        "Remaining sync-relevant tables (firme, documente, operatiuni_casa/bancare, mijloace_fixe, personal, liste_preturi, tip_consum, obiecte_inventar, grupe_produse, plan_conturi) LACK version/updated_at/deleted_at columns — they need a migration (0022_sync_columns) before adopting campuriSync.",
+        "documente already has its own `version` (optimistic locking, migration 0014); reconcile it with the sync `version` deliberately when versioning documents (they may be the same column with dual purpose, or need care).",
+        "remove() still hard-deletes (no tombstones yet)."
+      ],
+      "externalValidation": "Real-table versioning proven by @gr/data unit test (migrations applied + ProdusSchema)."
     }
   ]
 }

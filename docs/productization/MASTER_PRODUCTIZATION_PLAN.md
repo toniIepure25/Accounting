@@ -356,8 +356,17 @@ specs where applicable. No claim without evidence.
   `version=1`+`updatedAt=now` on create and `version+1`+`updatedAt=now` on update (entities without the
   fields unchanged; an EXPLICIT `updatedAt` from the caller — the future sync writing a server row
   verbatim — is preserved, not re-stamped). Partener migrated as proof; `MemorySeed` sync fields
-  optional. +4 `@gr/data` tests. NEXT: migrate the remaining sync-relevant entities, add
-  tombstones to `remove()`, then wire the local↔server sync.
+  optional. +4 `@gr/data` tests.
+
+### WIRING-17 — version the sync-ready nomenclatoare — **done**
+- Second increment: `campuriSync` added to `produse`/`gestiuni`/`puncte_lucru` (their tables
+  already carry the sync columns from migration 0001, so no migration needed); sync fields
+  omitted from each Input schema. Now versioned: parteneri, produse, gestiuni, puncte_lucru.
+  +1 `@gr/data` test (real `produse` table stamped/bumped). NEXT: migration `0022_sync_columns`
+  for the tables that lack the columns (firme, documente, casa/banca, mijloace_fixe, personal,
+  liste_preturi, tip_consum, obiecte_inventar, grupe_produse, plan_conturi), then their schemas;
+  reconcile `documente`'s existing optimistic-lock `version`; add tombstones to `remove()`; then
+  wire the local↔server sync.
 
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
