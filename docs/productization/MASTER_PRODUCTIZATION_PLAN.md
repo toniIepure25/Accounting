@@ -368,6 +368,14 @@ specs where applicable. No claim without evidence.
   reconcile `documente`'s existing optimistic-lock `version`; add tombstones to `remove()`; then
   wire the local↔server sync.
 
+### WIRING-18 — migration 0022 + version 7 master-data entities — **done**
+- `db/migrations/0022_sync_columns.sql` adds `version`/`updated_at`/`deleted_at` to firme,
+  grupe_produse, plan_conturi, personal, liste_preturi, tip_consum, obiecte_inventar (SQLite + PG);
+  bundle regenerated (drift test enforced); `campuriSync` spread into those 7 schemas. **11 entities
+  now versioned.** Migration verified applying on a fresh SQLite. NEXT: a follow-up migration for the
+  operational (operatiuni_casa/bancare, mijloace_fixe) + mobila-config tables, then `documente`
+  (reuse its optimistic-lock `version`), then tombstones on `remove()`, then wire the sync.
+
 ### P16 — Backup, restore, DR — **done**
 - **P16-R1** Full-database backup/restore incl. persisted ledgers — **done**:
   `exportBazaSql`/`importBazaSql` (`packages/data/src/backup-sql.ts`) snapshot the

@@ -5,12 +5,13 @@ planning or repeat earlier phases.
 
 ## Exact position
 - Branch: `main`
-- HEAD SHA: `9ecce9d` (WIRING-17 code) before the doc commit (the doc commit is the tip).
-- Recent: WIRING-15 (safe sync engine) + WIRING-16 (entity versioning foundation, Partener) +
-  WIRING-17 (`9ecce9d`, versioned produse/gestiuni/puncte_lucru). Tests 425/1 green.
+- HEAD SHA: `1de42a6` (WIRING-18 code) before the doc commit (the doc commit is the tip).
+- Recent: WIRING-15 (safe sync engine) + WIRING-16/17/18 (entity versioning). Tests 425/1 green.
 - **User decision (this session):** on discovering entities weren't versioned at the repo
-  boundary (blocking real sync), the user chose to **add entity versioning**. Now versioned:
-  **parteneri, produse, gestiuni, puncte_lucru**. Remaining tables need a migration (see below).
+  boundary (blocking real sync), the user chose to **add entity versioning**. Now versioned
+  (**11 entities**): parteneri, produse, gestiuni, puncte_lucru, firme, grupe_produse, plan_conturi,
+  personal, liste_preturi, tip_consum, obiecte_inventar. WIRING-18 added migration `0022_sync_columns`
+  for the 7 that lacked the columns. Remaining: operational + mobila-config tables + documente.
 - Remote: `https://github.com/toniIepure25/Accounting` (HTTPS). `git push` is
   blocked for the agent by the sandbox classifier — the USER must push. Confirm
   ahead/behind with `git log --oneline origin/main..HEAD`.
@@ -238,18 +239,18 @@ Remaining build directions the user selected:
   spike); `local-sqlite` now FULLY mirrors NETWORK — persistent in-browser SQLite (WIRING-12),
   posts via the real `@gr/application` engine (WIRING-13), reports read the local registers
   (WIRING-14); the RK-12-safe sync ENGINE exists (`sincronizeazaSigur`, WIRING-15); and the
-  entity-versioning FOUNDATION is in place (WIRING-16 repo stamping + WIRING-17 versioned
-  parteneri/produse/gestiuni/puncte_lucru — the tables that already had the sync columns from
-  migration 0001). Next slices: (1) **finish entity versioning** — the remaining sync-relevant
-  tables (firme, documente, operatiuni_casa/bancare, mijloace_fixe, personal, liste_preturi,
-  tip_consum, obiecte_inventar, grupe_produse, plan_conturi) LACK version/updated_at/deleted_at
-  columns; add a migration `0022_sync_columns.sql` (`ALTER TABLE ... ADD COLUMN` the three, on
-  SQLite + PG), regenerate `MIGRATII_INCORPORATE` (`node scripts/genereaza-migratii-incorporate.mjs`),
-  then spread `campuriSync` into those schemas + omit from Inputs. CAUTION: `documente` already
-  has its own `version` (optimistic locking, migration 0014) — decide whether the sync `version`
-  reuses it (likely, but the command layer bumps it; the repo stamping must not fight the
-  optimistic-lock bump). Then add soft-delete/tombstones to `remove()` (set `deletedAt`, bump
-  version, filter `deletedAt` in reads) so deletions propagate.
+  entity-versioning FOUNDATION is in place (WIRING-16 repo stamping) and 11 entities are versioned
+  (WIRING-17 + WIRING-18 migration `0022_sync_columns`). Next slices: (1) **finish entity
+  versioning** — (a) a follow-up migration adding the 3 sync columns to the still-unversioned
+  sync-relevant tables: `operatiuni_casa`, `operatiuni_bancare`, `mijloace_fixe` (firma-scoped
+  operational) and the mobila config (`optiuni_configurator`, `profil_configurator`,
+  `combinatii_interzise`, `preparate`, `retete_linii`); regenerate `MIGRATII_INCORPORATE`
+  (`node scripts/genereaza-migratii-incorporate.mjs`); then spread `campuriSync` into those schemas
+  (+ omit from Inputs). (b) `documente`/`documente_linii` as their OWN careful step: `documente`
+  already has its own `version` (optimistic locking, migration 0014) and the command layer bumps
+  it — decide whether the sync `version` reuses that column and ensure the repo stamp doesn't fight
+  the optimistic-lock bump. (c) soft-delete/tombstones on `remove()` (set `deletedAt`, bump version,
+  filter `deletedAt` in reads) so deletions propagate.
   (2) **WIRE the safe sync into the app** — a local-sqlite↔server sync built on
   `sincronizeazaSigur`: config to point a local-sqlite install at a sync server; per-resource
   `SursaSincronizare` (`citesteLocal/Remote` + `scrieLocal/Remote` over the local provider + the

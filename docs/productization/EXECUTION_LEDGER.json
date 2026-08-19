@@ -13,7 +13,7 @@
     "tests": {
       "total": 425,
       "skipped": 1,
-      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15/16/17 (safe sync engine + entity versioning: parteneri/produse/gestiuni/puncte_lucru); +1 skipped = gated real-PostgreSQL",
+      "note": "post Phase 1-17 + UI wiring (WIRING-2..14) + local-sqlite fixes + WIRING-15 safe sync engine + WIRING-16/17/18 entity versioning (11 entities: parteneri/produse/gestiuni/puncte_lucru/firme/grupe_produse/plan_conturi/personal/liste_preturi/tip_consum/obiecte_inventar); +1 skipped = gated real-PostgreSQL",
       "byPackage": {
         "core-domain": 138,
         "data": 106,
@@ -1364,6 +1364,31 @@
         "remove() still hard-deletes (no tombstones yet)."
       ],
       "externalValidation": "Real-table versioning proven by @gr/data unit test (migrations applied + ProdusSchema)."
+    },
+    {
+      "id": "WIRING-18",
+      "phase": 15,
+      "title": "migration 0022 sync columns + version 7 master-data entities",
+      "status": "done",
+      "files": [
+        "db/migrations/0022_sync_columns.sql",
+        "packages/data/src/migratii-incorporate.ts",
+        "packages/core-domain/src/entities/firma.ts",
+        "packages/core-domain/src/entities/structura.ts",
+        "packages/core-domain/src/entities/nomenclatoare.ts"
+      ],
+      "migrations": ["0022_sync_columns"],
+      "tests": [
+        "existing generic-sql-repo + migratii-incorporate drift/apply tests (bundle regenerated)"
+      ],
+      "commitSha": "1de42a6",
+      "acceptanceEvidence": "Third versioning increment. 0022_sync_columns.sql ALTERs firme/grupe_produse/plan_conturi/personal/liste_preturi/tip_consum/obiecte_inventar to ADD version/updated_at/deleted_at (SQLite+PG); MIGRATII_INCORPORATE regenerated (drift test enforces). campuriSync spread into those 7 schemas; sync fields omitted from FirmaInputSchema. Now versioned (11 entities): parteneri, produse, gestiuni, puncte_lucru, firme, grupe_produse, plan_conturi, personal, liste_preturi, tip_consum, obiecte_inventar. Ledgers + reference/internal tables excluded. Suite 425/1; typecheck 11/11; biome clean; build:web OK; migration verified applying on a fresh SQLite (all 7 tables gain the 3 columns).",
+      "risks": [
+        "Still unversioned (sync-relevant): the firma-scoped operational tables (operatiuni_casa/bancare, mijloace_fixe) and the mobila config (optiuni/profil/combinatii_configurator, preparate, retete_linii) — a follow-up migration + schemas. And documente/documente_linii (documente reuses its optimistic-lock `version` — deliberate step).",
+        "remove() still hard-deletes (no tombstones).",
+        "0022 uses plain ADD COLUMN with NOT NULL DEFAULT — fine on SQLite + PG for existing rows; if a table were large on PG the rewrite is O(rows) but these are small master-data tables."
+      ],
+      "externalValidation": "Migration apply + column presence verified on fresh SQLite; drift test keeps the browser bundle in sync."
     }
   ]
 }
