@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /** Punct de lucru (locatie a firmei). */
 export const PunctLucruSchema = z.object({
@@ -7,6 +8,7 @@ export const PunctLucruSchema = z.object({
   denumire: z.string().min(1).max(160),
   adresa: z.string().max(300).default(''),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 export type PunctLucru = z.infer<typeof PunctLucruSchema>;
 

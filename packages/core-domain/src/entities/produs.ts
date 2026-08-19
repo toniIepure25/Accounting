@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /** Tipul articolului din nomenclator. */
 export const TipProdus = z.enum([
@@ -37,9 +38,15 @@ export const ProdusSchema = z.object({
   /** Camp liber pentru cod de bare / SKU. */
   codBare: z.string().max(64).nullable().default(null),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 
 export type Produs = z.infer<typeof ProdusSchema>;
 
-export const ProdusInputSchema = ProdusSchema.omit({ id: true });
+export const ProdusInputSchema = ProdusSchema.omit({
+  id: true,
+  version: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type ProdusInput = z.infer<typeof ProdusInputSchema>;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /**
  * Gestiune (loc de stocare / gestionar responsabil).
@@ -21,9 +22,15 @@ export const GestiuneSchema = z.object({
   tip: TipGestiune.default('cantitativ_valorica'),
   punctDeLucruId: z.string().uuid().nullable().default(null),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 
 export type Gestiune = z.infer<typeof GestiuneSchema>;
 
-export const GestiuneInputSchema = GestiuneSchema.omit({ id: true });
+export const GestiuneInputSchema = GestiuneSchema.omit({
+  id: true,
+  version: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type GestiuneInput = z.infer<typeof GestiuneInputSchema>;

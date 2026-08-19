@@ -1,9 +1,11 @@
-import { campuriSync } from '@gr/core-domain';
+import { ProdusSchema, campuriSync } from '@gr/core-domain';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { fromBetterSqlite } from './adapters/better-sqlite.js';
 import { createSqlRepository } from './generic-sql-repo.js';
+import { migrate } from './migrate.js';
+import { MIGRATII_INCORPORATE } from './migratii-incorporate.js';
 import type { SqlExecutor } from './sql-executor.js';
 
 const Fx = z.object({ id: z.string(), v: z.string(), ...campuriSync });
@@ -50,6 +52,18 @@ describe('createSqlRepository — stampilarea campurilor de sincronizare', () =>
     const u = await r.update('2', { v: 'y', version: 9, updatedAt: 'SERVER2' });
     expect(u.version).toBe(9);
     expect(u.updatedAt).toBe('SERVER2');
+  });
+
+  it('produse (schema + tabela REALE) primesc version/updatedAt stampilate', async () => {
+    const exec = fromBetterSqlite(new Database(':memory:'));
+    await migrate(exec, MIGRATII_INCORPORATE);
+    const r = createSqlRepository(exec, 'produse', ProdusSchema, () => '2026-03-03T00:00:00.000Z');
+    const p = await r.create({ cod: 'X1', denumire: 'Produs X' });
+    expect(p.version).toBe(1);
+    expect(p.updatedAt).toBe('2026-03-03T00:00:00.000Z');
+    const u = await r.update(p.id, { denumire: 'Produs Y' });
+    expect(u.version).toBe(2);
+    expect((await r.getById(p.id))!.denumire).toBe('Produs Y');
   });
 
   it('entitatile FARA campuri de sync nu sunt afectate (comportament neschimbat)', async () => {
