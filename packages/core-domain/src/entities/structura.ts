@@ -18,5 +18,6 @@ export const GrupaProdusSchema = z.object({
   cod: z.string().min(1).max(20),
   denumire: z.string().min(1).max(160),
   parinteId: z.string().uuid().nullable().default(null),
+  ...campuriSync,
 });
 export type GrupaProdus = z.infer<typeof GrupaProdusSchema>;

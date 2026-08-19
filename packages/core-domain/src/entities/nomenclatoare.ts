@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /** Cont din planul de conturi romanesc. */
 export const PlanContSchema = z.object({
@@ -7,6 +8,7 @@ export const PlanContSchema = z.object({
   denumire: z.string().min(1).max(160),
   clasa: z.number().int().min(1).max(9),
   tip: z.enum(['sintetic', 'analitic']).default('sintetic'),
+  ...campuriSync,
 });
 export type PlanCont = z.infer<typeof PlanContSchema>;
 
@@ -19,6 +21,7 @@ export const PersonalSchema = z.object({
   cnp: z.string().max(13).nullable().default(null),
   gestionar: z.boolean().default(false),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 export type Personal = z.infer<typeof PersonalSchema>;
 
@@ -29,6 +32,7 @@ export const ListaPretSchema = z.object({
   produsId: z.string().uuid(),
   pretBani: z.number().int().min(0).default(0),
   valabilDe: z.string().nullable().default(null),
+  ...campuriSync,
 });
 export type ListaPret = z.infer<typeof ListaPretSchema>;
 
@@ -38,6 +42,7 @@ export const TipConsumSchema = z.object({
   cod: z.string().min(1).max(20),
   denumire: z.string().min(1).max(120),
   cont: z.string().max(20).default(''),
+  ...campuriSync,
 });
 export type TipConsum = z.infer<typeof TipConsumSchema>;
 
@@ -51,5 +56,6 @@ export const ObiectInventarSchema = z.object({
   gestiuneId: z.string().uuid().nullable().default(null),
   dataIntrare: z.string().nullable().default(null),
   activ: z.boolean().default(true),
+  ...campuriSync,
 });
 export type ObiectInventar = z.infer<typeof ObiectInventarSchema>;

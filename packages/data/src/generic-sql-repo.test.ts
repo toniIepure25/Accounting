@@ -1,4 +1,4 @@
-import { ProdusSchema, campuriSync } from '@gr/core-domain';
+import { type Produs, ProdusSchema, campuriSync } from '@gr/core-domain';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -57,7 +57,12 @@ describe('createSqlRepository — stampilarea campurilor de sincronizare', () =>
   it('produse (schema + tabela REALE) primesc version/updatedAt stampilate', async () => {
     const exec = fromBetterSqlite(new Database(':memory:'));
     await migrate(exec, MIGRATII_INCORPORATE);
-    const r = createSqlRepository(exec, 'produse', ProdusSchema, () => '2026-03-03T00:00:00.000Z');
+    const r = createSqlRepository<Produs>(
+      exec,
+      'produse',
+      ProdusSchema,
+      () => '2026-03-03T00:00:00.000Z',
+    );
     const p = await r.create({ cod: 'X1', denumire: 'Produs X' });
     expect(p.version).toBe(1);
     expect(p.updatedAt).toBe('2026-03-03T00:00:00.000Z');

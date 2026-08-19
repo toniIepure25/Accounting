@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { campuriSync } from './sync-fields.js';
 
 /**
  * Firma (persoana juridica). O singura instalare poate gestiona mai multe
@@ -38,9 +39,15 @@ export const FirmaSchema = z.object({
   culoarePrimara: z.string().nullable().default(null),
   /** Nume afisat in Sidebar/titlul paginii in locul denumirii generice a aplicatiei — pentru instalari vandute sub brand propriu. `null` = denumirea generica. */
   numeAplicatie: z.string().max(80).nullable().default(null),
+  ...campuriSync,
 });
 
 export type Firma = z.infer<typeof FirmaSchema>;
 
-export const FirmaInputSchema = FirmaSchema.omit({ id: true });
+export const FirmaInputSchema = FirmaSchema.omit({
+  id: true,
+  version: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type FirmaInput = z.infer<typeof FirmaInputSchema>;
